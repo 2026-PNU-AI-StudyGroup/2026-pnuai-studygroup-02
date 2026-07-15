@@ -1,0 +1,134 @@
+/* [CSS] 흰 배경과 초록색 포인트 테마 */
+
+/* 1. 글로벌 스타일 및 테마 변수 선언 */
+:root {
+    --bg-color: #ffffff;          /* 메인 흰색 배경 */
+    --card-bg: #f8f9fa;           /* 카드 및 내부 박스 배경 */
+    --text-color: #212529;        /* 텍스트 어두운 회색 */
+    --primary-color: #2ec4b6;     /* 메인 초록/민트 포인트 컬러 */
+    --primary-dark: #20a396;      /* 호버 시 사용할 어두운 초록 */
+    --secondary-color: #e9ecef;   /* 보조 버튼 회색 */
+    --secondary-dark: #dee2e6;    /* 보조 버튼 호버 */
+    --border-color: #e0e0e0;      /* 연한 경계선 색상 */
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.6;
+    padding: 20px;
+}
+
+/* 2. 레이아웃 (싱글 페이지 내 순차적 세로 배치) */
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 40px; /* 섹션 간 넉넉한 간격 */
+    padding-bottom: 100px; /* 맨 아래 스크롤 여유 */
+}
+
+/* 3. 섹션 공통 디자인 */
+.app-section {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 24px;
+    background-color: var(--bg-color);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+}
+
+.app-section h2 {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 8px;
+}
+
+/* 4. 공통 폼 및 구조화용 스타일 */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+input[type="number"],
+input[type="file"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    outline: none;
+}
+
+input[type="number"]:focus {
+    border-color: var(--primary-color);
+}
+
+/* 임시 영역 표시용 스타일 (기능 구현 전 레이아웃 시각화) */
+.toggle-container,
+.preview-container,
+.cards-container,
+.chart-container,
+.upload-box {
+    background-color: var(--card-bg);
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    margin: 15px 0;
+}
+
+.placeholder-text, .toggle-placeholder {
+    color: #868e96;
+    font-size: 0.95rem;
+    font-style: italic;
+}
+
+/* 5. 버튼 스타일 */
+.btn-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+button {
+    flex: 1;
+    padding: 12px 20px;
+    font-size: 1rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-dark);
+}
+
+.btn-secondary {
+    background-color: var(--secondary-color);
+    color: var(--text-color);
+}
+
+.btn-secondary:hover {
+    background-color: var(--secondary-dark);
+}
