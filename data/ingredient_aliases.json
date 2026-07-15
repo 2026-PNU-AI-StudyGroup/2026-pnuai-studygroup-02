@@ -1,0 +1,7 @@
+{
+  "_comment": "[DATA] 지은 담당. 모델 출력명(key) -> nutrition.csv의 ingredient_name(value) 매핑 별칭 사전",
+  "aliases": {
+    "쌀밥": "백미밥",
+    "달걀": "계란"
+  }
+}

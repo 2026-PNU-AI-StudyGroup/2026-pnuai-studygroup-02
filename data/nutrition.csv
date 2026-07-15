@@ -1,0 +1,4 @@
+# [DATA] 지은 담당. 식재료 100g 기준 영양성분표 (헤더 + 예시 1~2줄)
+ingredient_name,calories_kcal,carbohydrate_g,protein_g,fat_g,calcium_mg,iron_mg,vitamin_c_mg
+백미밥,143,31.5,2.5,0.3,3,0.2,0
+계란,147,0.8,12.4,10.0,52,1.8,0
