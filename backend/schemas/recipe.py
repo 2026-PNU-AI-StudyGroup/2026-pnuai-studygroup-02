@@ -1,88 +1,185 @@
 # backend/schemas/recipe.py
 
-from typing import Literal
+from typing import Literal, TypeAlias
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+# [SCHEMA] 레시피 생성 모드
+RecipeMode: TypeAlias = Literal[
+    "owned_first",
+    "nutrition_supplement",
+]
 
 
 # [SCHEMA] 레시피 생성 요청 데이터
 class RecipeRequest(BaseModel):
     ingredients: list[str] = Field(
-        ...,
+        min_length=1,
         description="사용자가 보유한 식재료 목록",
         examples=[["감자", "당근", "양배추"]],
     )
+
     deficient_nutrients: list[str] = Field(
         default_factory=list,
         description="사용자에게 부족한 영양소 목록",
-        examples=[["단백질", "비타민 C"]],
+        examples=[["단백질"]],
     )
-    mode: Literal["llm"] = Field(
-        default="llm",
-        description="레시피 생성 방식",
+
+    mode: RecipeMode = Field(
+        default="owned_first",
+        description="레시피 생성 모드",
     )
+
+    # [SCHEMA] 입력 문자열의 공백과 중복을 제거한다.
+    @field_validator(
+        "ingredients",
+        "deficient_nutrients",
+        mode="before",
+    )
+    @classmethod
+    def clean_string_list(
+        cls,
+        value: object,
+    ) -> object:
+        if not isinstance(value, list):
+            return value
+
+        result: list[str] = []
+
+        for item in value:
+            if not isinstance(item, str):
+                continue
+
+            cleaned = item.strip()
+
+            if cleaned and cleaned not in result:
+                result.append(cleaned)
+
+        return result
 
 
 # [SCHEMA] 개별 레시피 데이터
 class Recipe(BaseModel):
     recipe_id: str = Field(
-        ...,
+        min_length=1,
         description="레시피 고유 식별자",
-        examples=["recipe-001"],
     )
+
     title: str = Field(
-        ...,
+        min_length=1,
         description="레시피 이름",
-        examples=["감자 당근 볶음"],
     )
+
     owned_ingredients: list[str] = Field(
         default_factory=list,
-        description="사용자가 보유한 재료 중 레시피에 사용되는 재료",
-        examples=[["감자", "당근"]],
+        description="사용자가 보유한 재료",
     )
+
     additional_ingredients: list[str] = Field(
         default_factory=list,
-        description="추가로 필요한 재료",
-        examples=[["소금", "식용유"]],
+        description="추가로 준비해야 하는 재료",
     )
+
     steps: list[str] = Field(
-        ...,
-        description="순서대로 정리한 조리 단계",
-        examples=[
-            [
-                "감자와 당근을 먹기 좋은 크기로 썬다.",
-                "팬에 식용유를 두르고 재료를 볶는다.",
-                "소금으로 간한 뒤 접시에 담는다.",
-            ]
-        ],
+        min_length=1,
+        description="조리 단계",
     )
+
+    sources: list[str] = Field(
+        default_factory=list,
+        description="RAG를 사용하지 않으므로 항상 빈 배열",
+    )
+
+    # [SCHEMA] 문자열 필드의 앞뒤 공백을 제거한다.
+    @field_validator(
+        "recipe_id",
+        "title",
+        mode="before",
+    )
+    @classmethod
+    def clean_string(
+        cls,
+        value: object,
+    ) -> object:
+        if isinstance(value, str):
+            return value.strip()
+
+        return value
+
+    # [SCHEMA] 재료 목록의 공백과 중복을 제거한다.
+    @field_validator(
+        "owned_ingredients",
+        "additional_ingredients",
+        mode="before",
+    )
+    @classmethod
+    def clean_ingredient_list(
+        cls,
+        value: object,
+    ) -> object:
+        if not isinstance(value, list):
+            return value
+
+        result: list[str] = []
+
+        for item in value:
+            if not isinstance(item, str):
+                continue
+
+            cleaned = item.strip()
+
+            if cleaned and cleaned not in result:
+                result.append(cleaned)
+
+        return result
+
+    # [SCHEMA] 빈 문자열로 된 조리 단계를 제거한다.
+    @field_validator(
+        "steps",
+        mode="before",
+    )
+    @classmethod
+    def clean_steps(
+        cls,
+        value: object,
+    ) -> object:
+        if not isinstance(value, list):
+            return value
+
+        return [
+            item.strip()
+            for item in value
+            if isinstance(item, str) and item.strip()
+        ]
+
+    # [SCHEMA] sources는 항상 빈 배열로 만든다.
+    @field_validator(
+        "sources",
+        mode="before",
+    )
+    @classmethod
+    def force_empty_sources(
+        cls,
+        value: object,
+    ) -> list[str]:
+        return []
 
 
 # [SCHEMA] 레시피 생성 성공 응답 데이터
 class RecipeResponse(BaseModel):
-    recipe_mode: Literal["llm"] = Field(
-        default="llm",
-        description="레시피 생성에 사용된 방식",
+    recipe_mode: RecipeMode = Field(
+        description="레시피 생성 모드",
     )
+
     recipes: list[Recipe] = Field(
-        default_factory=list,
+        min_length=1,
         description="생성된 레시피 목록",
     )
 
 
-# [SCHEMA] API 공통 오류 응답 데이터
+# [SCHEMA] API 공통 오류 응답
 class CommonError(BaseModel):
-    code: str = Field(
-        ...,
-        description="오류 코드",
-        examples=["INVALID_REQUEST"],
-    )
-    message: str = Field(
-        ...,
-        description="사용자에게 전달할 오류 메시지",
-        examples=["요청 데이터가 올바르지 않습니다."],
-    )
-    details: dict[str, object] | list[object] | str | None = Field(
-        default=None,
-        description="오류에 대한 추가 정보",
-    )
+    code: str
+    message: str
+    details: dict[str, object] | list[object] | str | None = None
