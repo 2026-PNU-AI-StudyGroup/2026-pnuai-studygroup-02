@@ -1,41 +1,57 @@
 {
-  "recipe_mode": "llm",
+  "recipe_mode": "owned_first",
   "recipes": [
     {
-      "recipe_id": "owned-first-001",
+      "recipe_id": "mock-owned-001",
       "title": "감자 당근 볶음",
       "owned_ingredients": [
         "감자",
         "당근"
       ],
-      "additional_ingredients": [
-        "식용유",
-        "소금"
-      ],
+      "additional_ingredients": [],
       "steps": [
         "감자와 당근을 깨끗하게 씻는다.",
         "감자와 당근을 먹기 좋은 크기로 썬다.",
-        "팬에 식용유를 두르고 감자와 당근을 볶는다.",
-        "소금으로 간한 뒤 접시에 담는다."
-      ]
+        "팬에 식용유를 두르고 감자를 먼저 볶는다.",
+        "감자가 어느 정도 익으면 당근을 넣어 함께 볶는다.",
+        "소금과 후추로 간한다."
+      ],
+      "sources": []
     },
     {
-      "recipe_id": "nutrition-supplement-001",
+      "recipe_id": "mock-owned-002",
+      "title": "양배추 감자 볶음",
+      "owned_ingredients": [
+        "양배추",
+        "감자"
+      ],
+      "additional_ingredients": [],
+      "steps": [
+        "양배추와 감자를 깨끗하게 씻는다.",
+        "감자는 얇게 썰고 양배추는 먹기 좋은 크기로 자른다.",
+        "팬에 식용유를 두르고 감자를 먼저 볶는다.",
+        "양배추를 넣고 함께 익힌다.",
+        "소금과 후추로 간한다."
+      ],
+      "sources": []
+    },
+    {
+      "recipe_id": "mock-nutrition-001",
       "title": "양배추 달걀 볶음",
       "owned_ingredients": [
         "양배추"
       ],
       "additional_ingredients": [
-        "달걀",
-        "식용유",
-        "소금"
+        "달걀"
       ],
       "steps": [
-        "양배추를 깨끗하게 씻고 잘게 썬다.",
+        "양배추를 깨끗하게 씻고 썬다.",
+        "달걀을 그릇에 풀어 둔다.",
         "팬에 식용유를 두르고 양배추를 볶는다.",
-        "달걀을 풀어 팬에 넣는다.",
-        "양배추와 달걀을 함께 익힌 뒤 소금으로 간한다."
-      ]
+        "달걀물을 넣고 함께 익힌다.",
+        "소금과 후추로 간한다."
+      ],
+      "sources": []
     }
   ]
 }

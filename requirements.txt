@@ -3,3 +3,5 @@ uvicorn
 pydantic
 python-dotenv
 pandas
+python-dotenv
+google-genai
