@@ -1,6 +1,7 @@
 fastapi
 uvicorn
 pydantic
+pydantic-settings
 python-dotenv
 pandas
 python-dotenv
@@ -8,3 +9,4 @@ google-genai
 tensorflow
 pillow
 numpy
+pytest
