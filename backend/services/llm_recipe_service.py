@@ -7,9 +7,11 @@ import logging
 import os
 from pathlib import Path
 
+import httpx
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from pydantic import ValidationError
 
 from backend.schemas.recipe import RecipeMode, RecipeResponse
 
@@ -19,7 +21,7 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# [LLM-RECIPE] 구조화된 출력을 지원하는 안정 버전 모델을 사용한다.
+# [LLM-RECIPE] 구조화된 출력을 지원하는 모델을 사용한다.
 MODEL_NAME = "gemini-3.5-flash"
 
 # [LLM-RECIPE] 최초 1회와 재시도 2회, 최대 3회 호출한다.
@@ -51,12 +53,25 @@ STAPLE_KEYWORDS: tuple[str, ...] = (
     "바게트",
 )
 
-# [LLM-RECIPE] Gemini 호출 실패 시 사용할 고정 Mock 응답
+# backend/services/llm_recipe_service.py를 기준으로
+# 프로젝트 최상위의 mock/recipe_mock.json을 가리킨다.
 MOCK_FILE_PATH = (
-    Path(__file__).resolve().parent.parent
+    Path(__file__).resolve().parents[1]
     / "mock"
     / "recipe_mock.json"
 )
+
+
+class LLMTimeoutError(RuntimeError):
+    """LLM API 호출 시간이 초과된 경우."""
+
+
+class LLMResponseParseError(ValueError):
+    """LLM 응답 JSON 파싱 또는 스키마 검증에 실패한 경우."""
+
+
+class LLMEmptyResponseError(ValueError):
+    """LLM 응답 본문이 비어 있는 경우."""
 
 
 # [LLM-RECIPE] 입력 목록의 공백과 중복을 제거한다.
@@ -88,6 +103,28 @@ def _is_staple_ingredient(ingredient: str) -> bool:
         keyword in normalized
         for keyword in STAPLE_KEYWORDS
     )
+
+
+# [LLM-RECIPE] 예외 또는 원인 예외가 타임아웃인지 검사한다.
+def _is_timeout_exception(exc: BaseException) -> bool:
+    current: BaseException | None = exc
+    visited: set[int] = set()
+
+    while current is not None and id(current) not in visited:
+        visited.add(id(current))
+
+        if isinstance(
+            current,
+            (
+                TimeoutError,
+                httpx.TimeoutException,
+            ),
+        ):
+            return True
+
+        current = current.__cause__ or current.__context__
+
+    return False
 
 
 # [LLM-RECIPE] 사용자 입력과 모드에 맞는 프롬프트를 만든다.
@@ -173,26 +210,55 @@ def _call_gemini(prompt: str) -> RecipeResponse:
             "GEMINI_API_KEY가 설정되지 않았습니다."
         )
 
-    client = genai.Client(api_key=api_key)
+    try:
+        client = genai.Client(api_key=api_key)
 
-    # [LLM-RECIPE] Pydantic 스키마를 전달해 JSON 구조를 강제한다.
-    response = client.models.generate_content(
-        model=MODEL_NAME,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=RecipeResponse,
-            temperature=0.4,
-        ),
-    )
+        # Pydantic 스키마를 전달해 JSON 구조를 강제한다.
+        response = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=RecipeResponse,
+                temperature=0.4,
+            ),
+        )
 
-    if not response.text:
-        raise ValueError(
+    except Exception as exc:
+        # SDK 내부에서 타임아웃 예외가 감싸져 전달될 수도 있으므로
+        # 원인 예외까지 확인한다.
+        if _is_timeout_exception(exc):
+            raise LLMTimeoutError(
+                "Gemini API 호출 시간이 초과되었습니다."
+            ) from exc
+
+        raise
+
+    response_text = getattr(response, "text", None)
+
+    # None, 빈 문자열, 공백 문자열을 모두 빈 응답으로 처리한다.
+    if (
+        not isinstance(response_text, str)
+        or not response_text.strip()
+    ):
+        raise LLMEmptyResponseError(
             "Gemini 응답 본문이 비어 있습니다."
         )
 
-    # [LLM-RECIPE] Gemini가 반환한 JSON을 Pydantic으로 검증한다.
-    return RecipeResponse.model_validate_json(response.text)
+    try:
+        # Gemini가 반환한 JSON을 Pydantic으로 검증한다.
+        return RecipeResponse.model_validate_json(
+            response_text
+        )
+
+    except (
+        ValidationError,
+        json.JSONDecodeError,
+    ) as exc:
+        raise LLMResponseParseError(
+            "Gemini 응답 JSON 파싱 또는 "
+            "RecipeResponse 스키마 검증에 실패했습니다."
+        ) from exc
 
 
 # [LLM-RECIPE] Pydantic 이외의 업무 규칙을 추가로 검사한다.
@@ -223,7 +289,8 @@ def _validate_business_rules(
     for recipe in response.recipes:
         if recipe.recipe_id in recipe_ids:
             raise ValueError(
-                f"중복된 recipe_id가 있습니다: {recipe.recipe_id}"
+                f"중복된 recipe_id가 있습니다: "
+                f"{recipe.recipe_id}"
             )
 
         recipe_ids.add(recipe.recipe_id)
@@ -248,7 +315,7 @@ def _validate_business_rules(
                 + ", ".join(sorted(set(invalid_owned)))
             )
 
-        # [LLM-RECIPE] 기본 양념은 추가 재료 목록에서도 제거한다.
+        # 기본 양념은 추가 재료 목록에서도 제거한다.
         cleaned_additional: list[str] = []
 
         for ingredient in recipe.additional_ingredients:
@@ -276,7 +343,7 @@ def _validate_business_rules(
 
         recipe.steps = cleaned_steps
 
-        # [LLM-RECIPE] RAG가 아니므로 sources를 빈 배열로 강제한다.
+        # RAG가 아니므로 sources를 빈 배열로 강제한다.
         recipe.sources = []
 
     if mode == "nutrition_supplement":
@@ -301,15 +368,24 @@ def _load_mock_fallback(
             f"Mock 파일이 없습니다: {MOCK_FILE_PATH}"
         )
 
-    with MOCK_FILE_PATH.open(
-        mode="r",
-        encoding="utf-8",
-    ) as file:
-        mock_data = json.load(file)
+    try:
+        with MOCK_FILE_PATH.open(
+            mode="r",
+            encoding="utf-8",
+        ) as file:
+            mock_data = json.load(file)
 
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"Mock JSON 파싱에 실패했습니다: {MOCK_FILE_PATH}"
+        ) from exc
+
+    # 요청한 모드로 응답 모드를 맞춘다.
     mock_data["recipe_mode"] = mode
 
-    mock_response = RecipeResponse.model_validate(mock_data)
+    mock_response = RecipeResponse.model_validate(
+        mock_data
+    )
 
     result: list[dict] = []
 
@@ -326,8 +402,12 @@ def generate_recipes(
     deficient_nutrients: list[str],
     mode: RecipeMode,
 ) -> list[dict]:
-    normalized_ingredients = _normalize_items(ingredients)
-    normalized_nutrients = _normalize_items(deficient_nutrients)
+    normalized_ingredients = _normalize_items(
+        ingredients
+    )
+    normalized_nutrients = _normalize_items(
+        deficient_nutrients
+    )
 
     if not normalized_ingredients:
         raise ValueError(
@@ -350,7 +430,7 @@ def generate_recipes(
 
     retry_feedback = ""
 
-    # [LLM-RECIPE] 최초 1회와 재시도 2회를 수행한다.
+    # 최초 1회와 재시도 2회를 수행한다.
     for attempt in range(MAX_RETRIES + 1):
         try:
             prompt = _build_prompt(
@@ -374,18 +454,58 @@ def generate_recipes(
                 for recipe in response.recipes
             ]
 
+        except LLMTimeoutError as exc:
+            retry_feedback = str(exc)
+
+            logger.warning(
+                "LLM 레시피 생성 실패: "
+                "event=llm_api_timeout, "
+                "attempt=%s/%s, error=%s",
+                attempt + 1,
+                MAX_RETRIES + 1,
+                exc,
+            )
+
+        except LLMResponseParseError as exc:
+            retry_feedback = str(exc)
+
+            logger.warning(
+                "LLM 레시피 생성 실패: "
+                "event=llm_response_parse_failure, "
+                "attempt=%s/%s, error=%s",
+                attempt + 1,
+                MAX_RETRIES + 1,
+                exc,
+            )
+
+        except LLMEmptyResponseError as exc:
+            retry_feedback = str(exc)
+
+            logger.warning(
+                "LLM 레시피 생성 실패: "
+                "event=llm_empty_response, "
+                "attempt=%s/%s, error=%s",
+                attempt + 1,
+                MAX_RETRIES + 1,
+                exc,
+            )
+
         except Exception as exc:
             retry_feedback = str(exc)
 
             logger.warning(
-                "Gemini 레시피 생성 실패: 시도=%s/%s, 오류=%s",
+                "LLM 레시피 생성 실패: "
+                "event=llm_unknown_failure, "
+                "attempt=%s/%s, error=%s",
                 attempt + 1,
                 MAX_RETRIES + 1,
                 exc,
             )
 
     logger.error(
-        "Gemini 레시피 생성에 실패하여 Mock 응답을 사용합니다."
+        "LLM 레시피 생성 최종 실패: "
+        "event=mock_fallback, mock_path=%s",
+        MOCK_FILE_PATH,
     )
 
     return _load_mock_fallback(mode)
