@@ -1,14 +1,12 @@
 fastapi
 uvicorn
 pydantic>=2,<3
+pydantic-settings
 python-dotenv
-pandasgit 
-python-dotenv
+pandas
 google-genai
 tensorflow
 pillow
 numpy
-google-genai
 httpx
 pytest
-
