@@ -65,6 +65,40 @@ const app = {
         });
     },
 
+    // 0-2. "레시피 추천 받기"/"분석 화면으로" 버튼으로 분석 화면 <-> 레시피 화면을 전환한다.
+    //      실제 페이지 이동(URL 변경)이 아니라 같은 문서 안에서 두 섹션의 표시 여부만 바꾸는 방식이라
+    //      appState(인식 결과·영양 분석 결과 등)가 그대로 유지된다.
+    initViewSwitcher() {
+        const viewAnalysis = document.getElementById('view-analysis');
+        const viewRecipe = document.getElementById('view-recipe');
+        const recommendBtn = document.getElementById('recommend-btn');
+        const backBtn = document.getElementById('back-to-analysis-btn');
+
+        if (!viewAnalysis || !viewRecipe) return;
+
+        const showRecipeView = () => {
+            viewAnalysis.hidden = true;
+            viewRecipe.hidden = false;
+            window.scrollTo(0, 0);
+        };
+
+        const showAnalysisView = () => {
+            viewRecipe.hidden = true;
+            viewAnalysis.hidden = false;
+            window.scrollTo(0, 0);
+        };
+
+        // recipes.js가 같은 버튼에 실제 추천 API 호출 로직을 이미 연결해 두었으므로,
+        // 여기서는 화면 전환만 추가로 연결한다(클릭 시 두 리스너가 함께 실행됨).
+        if (recommendBtn) {
+            recommendBtn.addEventListener('click', showRecipeView);
+        }
+
+        if (backBtn) {
+            backBtn.addEventListener('click', showAnalysisView);
+        }
+    },
+
     // 1. 페이지 최초 로드 시 HTML 내부의 모든 유동 섹션을 대기 상태로 초기화 시키는 함수
     initSections() {
         console.log('[APP] HTML에 명시된 모든 섹션을 대기 상태로 초기화합니다.');
@@ -78,7 +112,7 @@ const app = {
         // 식재료 인식 결과 영역 초기화
         const resultCards = document.getElementById('result-cards');
         if (resultCards) {
-            resultCards.innerHTML = '<p class="placeholder-text">인식된 식재료 카드 목록이 여기에 표시됩니다.</p>';
+            resultCards.innerHTML = '<p class="placeholder-text">인식된 식재료가 여기에 태그로 표시됩니다.</p>';
         }
 
         // 종합 영양 분석 그래프 영역 초기화
@@ -160,4 +194,5 @@ document.addEventListener('DOMContentLoaded', () => {
     app.initSections();
     app.initGenderToggle();
     app.initAgeInput();
+    app.initViewSwitcher();
 });

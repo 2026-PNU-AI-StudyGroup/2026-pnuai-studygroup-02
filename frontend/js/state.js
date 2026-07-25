@@ -107,26 +107,6 @@ function canAnalyze() {
 }
 
 /**
- * [STATE] 해당 이미지의 인식 결과를 수정하고 영양/레시피 결과를 null로 초기화한다.
- * @param {string} imageId - 수정할 식재료의 image_id
- * @param {string} newName - 새 식재료 이름
- */
-function updateIngredient(imageId, newName) {
-    const target = appState.recognized.find(item => item.image_id === imageId);
-    if (target) {
-        target.name = newName;
-        target.edited = true;
-
-        // 재료 수정 시 영양/레시피 결과 초기화
-        appState.nutrition = null;
-        appState.recipes = null;
-
-        canAnalyze();
-        console.log(`[STATE] 식재료 수정 완료 (imageId: ${imageId} -> ${newName})`);
-    }
-}
-
-/**
  * [STATE] 사진(images)과 인식 결과(recognized)를 동시에 삭제하고 결과를 초기화한다.
  * @param {string} imageId - 삭제할 image_id
  */

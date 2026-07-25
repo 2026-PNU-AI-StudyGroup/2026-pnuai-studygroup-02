@@ -1,7 +1,7 @@
 // [UPLOAD] 근영 담당. 이미지 선택, 확장자 검증, 개별 삭제 및 미리보기 렌더링
 
 /**
- * [UPLOAD] 인식된 식재료 카드 목록을 렌더링한다. 이름 수정과 개별 삭제를 지원한다.
+ * [UPLOAD] 인식된 식재료 카드 목록을 렌더링한다. 이름은 읽기 전용이며 삭제만 가능하다.
  * @param {Array} recognizedItems - appState.recognized 배열
  * @param {HTMLElement} container - id='result-cards' 요소
  */
@@ -11,7 +11,7 @@ function renderResultCards(recognizedItems, container) {
     container.innerHTML = '';
 
     if (!recognizedItems || recognizedItems.length === 0) {
-        container.innerHTML = '<p class="placeholder-text">인식된 식재료 카드 목록이 여기에 표시됩니다.</p>';
+        container.innerHTML = '<p class="placeholder-text">인식된 식재료가 여기에 태그로 표시됩니다.</p>';
         return;
     }
 
@@ -49,26 +49,10 @@ function renderResultCards(recognizedItems, container) {
             return;
         }
 
-        // 이름 수정 입력창: 값이 바뀌면 updateIngredient()/직접 수정으로 반영한다.
-        const nameInput = document.createElement('input');
-        nameInput.type = 'text';
-        nameInput.value = item.name;
-        nameInput.className = 'result-card-name-input';
-
-        nameInput.addEventListener('change', () => {
-            const newName = nameInput.value.trim();
-            if (!newName) return;
-
-            if (item.image_id) {
-                updateIngredient(item.image_id, newName);
-            } else {
-                item.name = newName;
-                item.edited = true;
-                appState.nutrition = null;
-                appState.recipes = null;
-                if (typeof canAnalyze === 'function') canAnalyze();
-            }
-        });
+        // [UPLOAD] 이름은 수정 불가, 읽기 전용 텍스트로만 표시한다 (삭제 후 다시 추가하는 방식으로만 변경 가능).
+        const nameText = document.createElement('span');
+        nameText.textContent = item.name;
+        nameText.className = 'result-card-name';
 
         const confidenceText = document.createElement('span');
         confidenceText.className = 'result-card-confidence';
@@ -76,7 +60,7 @@ function renderResultCards(recognizedItems, container) {
             ? `신뢰도 ${Math.round(item.confidence * 100)}%`
             : '';
 
-        card.appendChild(nameInput);
+        card.appendChild(nameText);
         card.appendChild(confidenceText);
         card.appendChild(deleteBtn);
         container.appendChild(card);
@@ -85,16 +69,13 @@ function renderResultCards(recognizedItems, container) {
 
 document.addEventListener('DOMContentLoaded', () => {
     const fileInput = document.getElementById('file-input');
+    const dropzone = document.getElementById('dropzone');
     const previewList = document.getElementById('preview-list');
     const recognizeBtn = document.getElementById('recognize-btn');
     const resultCardsContainer = document.getElementById('result-cards');
 
     // 지원 확장자 정의 (jpg, jpeg, png)
     const allowedExtensions = ['jpg', 'jpeg', 'png'];
-
-    // appState에 이미지 배열이 없다면 초기화
-    if (!window.appState) window.appState = {};
-    if (!appState.images) appState.images = [];
 
     /**
      * 현재 상태의 이미지 목록을 읽어와 미리보기 UI 영역을 다시 그리는 렌더링 함수
@@ -105,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
         previewList.innerHTML = '';
 
         if (appState.images.length === 0) {
-            previewList.innerHTML = `<p class="placeholder-text text-gray-400 text-sm">선택한 이미지 미리보기가 여기에 표시됩니다.</p>`;
+            previewList.innerHTML = `<p class="placeholder-text">선택한 이미지 미리보기가 여기에 표시됩니다.</p>`;
             return;
         }
 
@@ -131,27 +112,57 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 파일 선택 이벤트 처리
+    /**
+     * 파일 목록을 검증 후 상태에 추가한다. 클릭 업로드(change)와 드래그앤드롭(drop) 양쪽에서 공용으로 쓴다.
+     * @param {FileList|File[]} fileList
+     */
+    function handleFiles(fileList) {
+        Array.from(fileList).forEach(file => {
+            const ext = file.name.split('.').pop().toLowerCase();
+
+            // 확장자 검증
+            if (!allowedExtensions.includes(ext)) {
+                alert(`지원하지 않는 파일 형식입니다 (${file.name}). jpg, jpeg, png 파일만 업로드 가능합니다.`);
+                return;
+            }
+
+            // state.js의 addImage()로 상태에 추가 (image_id, previewUrl을 함께 생성)
+            addImage(file);
+        });
+
+        renderPreviews();
+    }
+
+    // 클릭해서 파일 선택하는 경우
     if (fileInput) {
         fileInput.addEventListener('change', (event) => {
-            const files = Array.from(event.target.files);
-
-            files.forEach(file => {
-                const ext = file.name.split('.').pop().toLowerCase();
-
-                // 확장자 검증
-                if (!allowedExtensions.includes(ext)) {
-                    alert(`지원하지 않는 파일 형식입니다 (${file.name}). jpg, jpeg, png 파일만 업로드 가능합니다.`);
-                    return;
-                }
-
-                // state.js의 addImage()로 상태에 추가 (image_id, previewUrl을 함께 생성)
-                addImage(file);
-            });
-
+            handleFiles(event.target.files);
             // 입력값 초기화 (같은 파일 다시 선택 가능하도록)
             fileInput.value = '';
-            renderPreviews();
+        });
+    }
+
+    // 드래그앤드롭으로 파일을 놓는 경우 (같은 handleFiles()를 재사용)
+    if (dropzone) {
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (event) => {
+                event.preventDefault();
+                dropzone.classList.add('dropzone-active');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (event) => {
+                event.preventDefault();
+                dropzone.classList.remove('dropzone-active');
+            });
+        });
+
+        dropzone.addEventListener('drop', (event) => {
+            const droppedFiles = event.dataTransfer ? event.dataTransfer.files : [];
+            if (droppedFiles && droppedFiles.length > 0) {
+                handleFiles(droppedFiles);
+            }
         });
     }
 

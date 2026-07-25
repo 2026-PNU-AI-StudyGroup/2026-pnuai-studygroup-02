@@ -1,11 +1,15 @@
 // [RECIPES] 근영 담당. 한국어 주석 필수
 // 맞춤형 레시피 추천 API 연동 및 데이터 동적 화면 렌더링
 
+// [RECIPES] 레시피 카드 상단 장식용 아이콘 (백엔드가 이미지 URL을 제공하지 않아 실제 사진 대신 아이콘을 사용한다)
+const RECIPE_CARD_ICONS = ['🍳', '🥘', '🍲', '🥗', '🍛', '🍜'];
+
 /**
  * [RECIPES] 레시피 하나를 카드 엘리먼트로 만든다.
  * @param {Object} recipe - 백엔드 Recipe 스키마 ({ title, owned_ingredients, additional_ingredients, steps })
+ * @param {number} index - 카드 아이콘을 다양하게 보여주기 위한 인덱스
  */
-function buildRecipeCard(recipe) {
+function buildRecipeCard(recipe, index) {
     const card = document.createElement('div');
     card.className = 'recipe-card'; // style.css 스타일 적용을 위한 클래스 선언
 
@@ -24,23 +28,28 @@ function buildRecipeCard(recipe) {
         ? recipe.steps.map((step, idx) => `<li>${idx + 1}. ${step}</li>`).join('')
         : '<li>조리 순서 정보가 제공되지 않았습니다.</li>';
 
-    // 카드 바디 구성 (레시피명, 보유재료, 추가재료, 조리순서 일괄 주입)
-    // 백엔드 Recipe 스키마에는 title만 있고 reason 필드는 없다.
-    card.innerHTML = `
-        <h3 class="recipe-title">${recipe.title || '이름 없는 레시피'}</h3>
+    const icon = RECIPE_CARD_ICONS[index % RECIPE_CARD_ICONS.length];
 
-        <div class="recipe-ingredients-wrap">
-            <div class="ing-block">
-                <h4>내 냉장고 재료</h4>
-                <ul>${ownedHTML}</ul>
-            </div>
-            <div class="ing-block">
-                <h4>필요한 추가 장보기 목록</h4>
-                <ul>${additionalHTML}</ul>
+    // 카드 바디 구성: 왼쪽(레시피명/재료), 오른쪽(조리순서)을 가로로 나란히 배치한다.
+    // 백엔드 Recipe 스키마에는 title만 있고 reason/조리시간/난이도 필드는 없어 표시하지 않는다.
+    card.innerHTML = `
+        <div class="recipe-card-main">
+            <div class="recipe-card-thumb">${icon}</div>
+            <h3 class="recipe-title">${recipe.title || '이름 없는 레시피'}</h3>
+
+            <div class="recipe-ingredients-wrap">
+                <div class="ing-block">
+                    <h4>내 냉장고 재료</h4>
+                    <ul>${ownedHTML}</ul>
+                </div>
+                <div class="ing-block">
+                    <h4>필요한 추가 장보기 목록</h4>
+                    <ul>${additionalHTML}</ul>
+                </div>
             </div>
         </div>
 
-        <div class="recipe-steps-wrap">
+        <div class="recipe-card-steps">
             <h4>조리 순서 안내</h4>
             <ol>${stepsHTML}</ol>
         </div>
@@ -51,7 +60,7 @@ function buildRecipeCard(recipe) {
 
 /**
  * [RECIPES] 레시피 목록을 "냉장고 재료로만 가능" / "추천(추가) 재료 필요"
- * 두 그룹으로 나눠 id='recipe-cards' 영역에 렌더링한다.
+ * 두 그룹으로 나눠 id='recipe-cards' 영역에 카드 그리드로 렌더링한다.
  * @param {Array} recipes - 백엔드 Recipe 배열
  * @param {HTMLElement} container
  */
@@ -66,7 +75,7 @@ function renderRecipeCards(recipes, container) {
         recipe => recipe.additional_ingredients && recipe.additional_ingredients.length > 0
     );
 
-    const renderGroup = (title, groupRecipes) => {
+    const renderGroup = (title, description, groupRecipes) => {
         const groupSection = document.createElement('div');
         groupSection.className = 'recipe-group';
 
@@ -75,20 +84,36 @@ function renderRecipeCards(recipes, container) {
         heading.textContent = title;
         groupSection.appendChild(heading);
 
+        const desc = document.createElement('p');
+        desc.className = 'recipe-group-desc';
+        desc.textContent = description;
+        groupSection.appendChild(desc);
+
         if (groupRecipes.length === 0) {
             const empty = document.createElement('p');
             empty.className = 'placeholder-text';
             empty.textContent = '해당하는 레시피가 없습니다.';
             groupSection.appendChild(empty);
         } else {
-            groupRecipes.forEach(recipe => groupSection.appendChild(buildRecipeCard(recipe)));
+            const grid = document.createElement('div');
+            grid.className = 'recipe-cards-grid';
+            groupRecipes.forEach((recipe, index) => grid.appendChild(buildRecipeCard(recipe, index)));
+            groupSection.appendChild(grid);
         }
 
         container.appendChild(groupSection);
     };
 
-    renderGroup('🧊 내 냉장고 재료로만 가능한 레시피', ownedOnlyRecipes);
-    renderGroup('🛒 추천 재료가 들어간 레시피', withExtraRecipes);
+    renderGroup(
+        '🥬 내 냉장고 재료로만 가능한 레시피',
+        '현재 보유한 재료만으로 만들 수 있는 레시피입니다.',
+        ownedOnlyRecipes
+    );
+    renderGroup(
+        '🛒 추천 재료가 들어간 레시피',
+        '재료 몇 가지만 추가하면 만들 수 있는 레시피입니다.',
+        withExtraRecipes
+    );
 }
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -3,13 +3,34 @@
 
 // [NUTRITION] 충족률 상태별 막대 색상
 const NUTRITION_STATUS_COLORS = {
-    '높음': '#2ec4b6',
-    '보통': '#f4a261',
-    '낮음': '#e63946'
+    '높음': '#22c55e',
+    '보통': '#f59e0b',
+    '낮음': '#ef4444'
 };
 
+// [NUTRITION] 상태 문자열 -> 배지 CSS 클래스
+const NUTRITION_STATUS_BADGE_CLASS = {
+    '높음': 'status-high',
+    '보통': 'status-mid',
+    '낮음': 'status-low'
+};
+
+// [NUTRITION] 영양소 표시 단위
+const NUTRIENT_UNITS = {
+    calories_kcal: 'kcal',
+    carbohydrate_g: 'g',
+    protein_g: 'g',
+    fat_g: 'g',
+    calcium_mg: 'mg',
+    iron_mg: 'mg',
+    vitamin_c_mg: 'mg'
+};
+
+// [NUTRITION] 칼로리는 오른쪽에 별도 강조 카드로 빼고, 나머지 영양소만 막대그래프로 보여준다.
+const NUTRITION_CALORIE_KEY = 'calories_kcal';
+
 /**
- * [NUTRITION] id='nutrition-bars' 영역에 영양소별 충족률 막대그래프를 렌더링한다.
+ * [NUTRITION] id='nutrition-bars' 영역을 [막대그래프(좌) | 칼로리 강조 카드(우)]로 나눠 렌더링한다.
  * @param {Object} nutritionData - 영양 분석 결과 데이터 ({ summary, ... })
  */
 function renderNutritionBars(nutritionData) {
@@ -23,7 +44,11 @@ function renderNutritionBars(nutritionData) {
         return;
     }
 
-    const rowsHTML = summary.map((row) => {
+    const calorieRow = summary.find((row) => row.nutrient === NUTRITION_CALORIE_KEY);
+    const barRows = summary.filter((row) => row.nutrient !== NUTRITION_CALORIE_KEY);
+
+    // 1. 칼로리를 제외한 나머지 영양소: 막대그래프
+    const barsHTML = barRows.map((row) => {
         const label = NUTRIENT_LABELS[row.nutrient] || row.nutrient;
         const barWidth = Math.min(row.percentage, 100);
         const color = NUTRITION_STATUS_COLORS[row.status] || '#868e96';
@@ -41,7 +66,26 @@ function renderNutritionBars(nutritionData) {
         `;
     }).join('');
 
-    container.innerHTML = `<div class="nutrition-bars-wrap">${rowsHTML}</div>`;
+    // 2. 칼로리: 권장량 대비 퍼센트를 강조하는 카드
+    const calorieHTML = calorieRow
+        ? `
+            <div class="nutrition-calorie-card">
+                <div class="nutrition-calorie-icon">🔥</div>
+                <div class="nutrition-calorie-label">칼로리</div>
+                <div class="nutrition-calorie-value">${calorieRow.total}<small>${NUTRIENT_UNITS[NUTRITION_CALORIE_KEY]}</small></div>
+                <span class="nutrition-calorie-badge ${NUTRITION_STATUS_BADGE_CLASS[calorieRow.status] || ''}">
+                    권장량 대비 ${calorieRow.percentage}% (${calorieRow.status})
+                </span>
+            </div>
+        `
+        : '';
+
+    container.innerHTML = `
+        <div class="nutrition-summary-split">
+            <div class="nutrition-bars-wrap">${barsHTML}</div>
+            ${calorieHTML}
+        </div>
+    `;
 }
 
 // [NUTRITION] backend/services/nutrition_service.py의 NUTRIENT_KEYS와 동일한 키를 화면 표시용

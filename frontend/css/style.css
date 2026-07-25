@@ -1,15 +1,26 @@
-/* [CSS] 흰 배경과 초록색 포인트 테마 */
+/* [CSS] SaaS 스타일(Toss/오늘의집/Notion 톤) 화이트 배경 + 연녹색 포인트 테마 */
+/* [CSS-REDESIGN] 디자인(레이아웃/색/여백)만 변경. 기능/데이터/상태 로직은 건드리지 않음. */
 
 /* 1. 글로벌 스타일 및 테마 변수 선언 */
 :root {
     --bg-color: #ffffff;          /* 메인 흰색 배경 */
-    --card-bg: #f8f9fa;           /* 카드 및 내부 박스 배경 */
-    --text-color: #212529;        /* 텍스트 어두운 회색 */
-    --primary-color: #2ec4b6;     /* 메인 초록/민트 포인트 컬러 */
-    --primary-dark: #20a396;      /* 호버 시 사용할 어두운 초록 */
-    --secondary-color: #e9ecef;   /* 보조 버튼 회색 */
-    --secondary-dark: #dee2e6;    /* 보조 버튼 호버 */
-    --border-color: #e0e0e0;      /* 연한 경계선 색상 */
+    --bg-soft: #f7f9fa;           /* 페이지 배경(카드와 구분되는 은은한 톤) */
+    --card-bg: #f3f8f5;           /* 카드 내부 박스 배경(연녹색 톤) */
+    --text-color: #1a1a1a;        /* 텍스트 짙은 회색 */
+    --text-muted: #6b7280;        /* 보조 텍스트 */
+    --primary-color: #22c55e;     /* 메인 연녹색 포인트 컬러 */
+    --primary-dark: #16a34a;      /* 호버 시 사용할 진한 녹색 */
+    --primary-soft: #dcfce7;      /* 아주 연한 녹색 배경(배지 등) */
+    --secondary-color: #f1f3f5;   /* 보조 버튼 회색 */
+    --secondary-dark: #e2e5e8;    /* 보조 버튼 호버 */
+    --border-color: #e5e7eb;      /* 연한 경계선 색상 */
+    --danger-color: #ef4444;      /* 삭제/경고 색상 */
+    --danger-soft: #fef2f2;
+    --radius-lg: 20px;
+    --radius-md: 16px;
+    --radius-sm: 10px;
+    --shadow-card: 0 4px 16px rgba(15, 23, 42, 0.06);
+    --shadow-card-hover: 0 10px 28px rgba(15, 23, 42, 0.10);
 }
 
 * {
@@ -19,85 +30,136 @@
 }
 
 body {
-    background-color: var(--bg-color);
+    background-color: var(--bg-soft);
     color: var(--text-color);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     line-height: 1.6;
-    padding: 20px;
 }
 
-/* 2. 레이아웃 (싱글 페이지 내 순차적 세로 배치) */
-.container {
-    max-width: 800px;
+/* 2. 상단 고정 헤더 */
+.app-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background-color: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.app-header-inner {
+    max-width: 1320px;
     margin: 0 auto;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+}
+
+.app-logo {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text-color);
+    letter-spacing: -0.02em;
+}
+
+.app-logo span {
+    color: var(--primary-color);
+}
+
+/* 3. 레이아웃 */
+.container {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 32px 24px 120px;
+}
+
+.app-view {
     display: flex;
     flex-direction: column;
-    gap: 40px; /* 섹션 간 넉넉한 간격 */
-    padding-bottom: 100px; /* 맨 아래 스크롤 여유 */
+    gap: 28px;
 }
 
-/* 3. 섹션 공통 디자인 */
-.app-section {
+.app-view[hidden] {
+    display: none;
+}
+
+/* 분석 화면: 왼쪽(프로필/인식결과)은 좁게, 오른쪽(업로드/영양분석)은 넓게 2x2 배치.
+   웹 화면은 가로 공간이 넉넉하므로 오른쪽 열(업로드/영양분석 카드)을 더 크게 잡는다. */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 24px;
+}
+
+/* 4. 카드 공통 디자인 */
+.app-card {
     border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 24px;
+    border-radius: var(--radius-lg);
+    padding: 28px;
     background-color: var(--bg-color);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+    box-shadow: var(--shadow-card);
 }
 
-.app-section h2 {
-    font-size: 1.5rem;
-    margin-bottom: 20px;
-    color: var(--primary-color);
-    border-bottom: 2px solid var(--primary-color);
-    padding-bottom: 8px;
+.app-card h2 {
+    font-size: 1.15rem;
+    margin-bottom: 18px;
+    color: var(--text-color);
 }
 
-/* 4. 공통 폼 및 구조화용 스타일 */
+.app-card-highlight {
+    border-color: var(--primary-soft);
+    box-shadow: var(--shadow-card-hover);
+}
+
+/* 5. 공통 폼 스타일 */
 .form-group {
-    margin-bottom: 15px;
+    margin-bottom: 16px;
 }
 
 .form-group label {
     display: block;
-    font-weight: bold;
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--text-muted);
     margin-bottom: 8px;
 }
 
 input[type="number"],
-input[type="file"] {
+input[type="text"],
+select {
     width: 100%;
-    padding: 10px;
+    padding: 12px 14px;
     border: 1px solid var(--border-color);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     outline: none;
+    font-size: 0.95rem;
+    background-color: var(--bg-color);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-input[type="number"]:focus {
+input[type="number"]:focus,
+input[type="text"]:focus,
+select:focus {
     border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
-/* 임시 영역 표시용 스타일 (기능 구현 전 레이아웃 시각화) */
 .toggle-container,
 .preview-container,
 .cards-container,
-.chart-container,
-.upload-box {
+.chart-container {
     background-color: var(--card-bg);
-    border: 2px dashed var(--border-color);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 20px;
     text-align: center;
-    margin: 15px 0;
+    margin: 12px 0;
 }
 
 .placeholder-text, .toggle-placeholder {
-    color: #868e96;
-    font-size: 0.95rem;
-    font-style: italic;
+    color: var(--text-muted);
+    font-size: 0.92rem;
 }
 
-/* 5. 버튼 스타일 */
+/* 6. 버튼 스타일 */
 .btn-group {
     display: flex;
     gap: 10px;
@@ -106,13 +168,13 @@ input[type="number"]:focus {
 
 button {
     flex: 1;
-    padding: 12px 20px;
-    font-size: 1rem;
-    font-weight: bold;
+    padding: 13px 20px;
+    font-size: 0.95rem;
+    font-weight: 700;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: background-color 0.2s ease;
+    transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
 }
 
 .btn-primary {
@@ -124,6 +186,10 @@ button {
     background-color: var(--primary-dark);
 }
 
+.btn-primary:active {
+    transform: scale(0.98);
+}
+
 .btn-secondary {
     background-color: var(--secondary-color);
     color: var(--text-color);
@@ -133,11 +199,77 @@ button {
     background-color: var(--secondary-dark);
 }
 
-/* 6. 이미지 미리보기 (upload.js): 섹션 가로 폭을 최대한 활용해 카드가 옆으로 나란히 배치되다가 줄바꿈된다 */
+/* 분석 화면 맨 아래, 가장 눈에 띄는 레시피 추천 CTA 버튼 */
+.btn-huge {
+    flex: none;
+    width: 100%;
+    padding: 20px;
+    font-size: 1.1rem;
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 20px rgba(34, 197, 94, 0.25);
+}
+
+.btn-huge:hover {
+    box-shadow: 0 10px 24px rgba(34, 197, 94, 0.32);
+}
+
+.btn-back {
+    flex: none;
+    width: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background-color: var(--secondary-color);
+    color: var(--text-color);
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 10px 18px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 20px;
+}
+
+.btn-back:hover {
+    background-color: var(--secondary-dark);
+}
+
+/* 7. 이미지 업로드 드롭존 */
+.upload-dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 160px;
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-md);
+    background-color: var(--card-bg);
+    cursor: pointer;
+    text-align: center;
+    padding: 24px;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.upload-dropzone:hover,
+.upload-dropzone.dropzone-active {
+    border-color: var(--primary-color);
+    background-color: var(--primary-soft);
+}
+
+.upload-dropzone-icon {
+    font-size: 2rem;
+}
+
+.upload-dropzone-text {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+/* 이미지 미리보기: 섹션 가로 폭을 최대한 활용해 카드가 옆으로 나란히 배치되다가 줄바꿈된다 */
 #preview-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 14px;
+    gap: 12px;
     justify-content: flex-start;
 }
 
@@ -146,145 +278,223 @@ button {
     flex-direction: column;
     align-items: center;
     gap: 6px;
-    width: 120px;
+    width: 104px;
     background-color: #ffffff;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     padding: 10px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--shadow-card);
 }
 
 .preview-thumb {
-    width: 96px;
-    height: 96px;
+    width: 84px;
+    height: 84px;
     object-fit: cover;
-    border-radius: 6px;
+    border-radius: 8px;
 }
 
 .preview-filename {
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     text-align: center;
+    color: var(--text-muted);
 }
 
 /* 전역 button 스타일(큰 버튼용)을 덮어써서 미리보기 카드 안의 삭제 버튼을 작게 만든다 */
 #preview-list .delete-btn {
     flex: none;
     width: auto;
-    padding: 4px 10px;
-    font-size: 0.75rem;
-    font-weight: normal;
+    padding: 3px 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
     background-color: transparent;
-    color: #e63946;
-    border: 1px solid #e63946;
-    border-radius: 4px;
+    color: var(--danger-color);
+    border: 1px solid var(--danger-color);
+    border-radius: 999px;
 }
 
 #preview-list .delete-btn:hover {
-    background-color: #e63946;
+    background-color: var(--danger-color);
     color: #ffffff;
 }
 
-/* 7. 인식 결과 카드 목록: 항목이 많아져도 섹션이 무한정 늘어나지 않도록 스크롤 처리 */
-#result-cards {
-    max-height: 320px;
+/* 식재료 인식 결과 카드: 세로 방향 flex로 만들어서, 옆(오른쪽 열)의 종합 영양 분석 카드가
+   결과가 채워지며 길어질 때 같은 행(grid row)의 높이도 함께 늘어나고, 그 늘어난 공간만큼
+   #result-cards 태그 목록도 자동으로 따라 커지도록 한다 (grid의 기본 stretch 정렬을 활용). */
+#sec-result {
+    display: flex;
+    flex-direction: column;
+}
+
+/* 8. 인식 결과: 태그(chip) 형태로 표시. 기본 높이를 키우고, 그 이상 늘어나면 스크롤 처리 */
+#result-cards.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 8px;
+    flex: 1;
+    min-height: 320px;
+    max-height: 520px;
     overflow-y: auto;
     text-align: left;
+    background: none;
+    padding: 4px 0;
 }
 
 .result-card {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 10px;
-    background-color: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 10px 12px;
-    margin-bottom: 8px;
+    gap: 6px;
+    background-color: var(--primary-soft);
+    border: 1px solid transparent;
+    border-radius: 999px;
+    padding: 6px 8px 6px 14px;
 }
 
-.result-card-name-input {
-    flex: 1;
-    min-width: 0;
-    padding: 6px 8px;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
+.result-card-name {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--primary-dark);
+    padding: 2px 4px;
 }
 
 .result-card-confidence {
     flex-shrink: 0;
-    font-size: 0.78rem;
-    color: #868e96;
+    font-size: 0.7rem;
+    color: var(--text-muted);
 }
 
 .result-card-error {
     flex: 1;
-    color: #e63946;
-    font-size: 0.85rem;
+    color: var(--danger-color);
+    font-size: 0.82rem;
+    padding: 4px 6px;
 }
 
-/* 전역 button 스타일(큰 버튼용)을 덮어써서 인식 결과 카드 안의 삭제 버튼을 작게 만든다 */
+/* 전역 button 스타일(큰 버튼용)을 덮어써서 인식 결과 태그 안의 삭제 버튼을 작은 원형 ×로 만든다 */
 .result-card-delete-btn {
     flex: none;
-    width: auto;
-    padding: 4px 10px;
-    font-size: 0.75rem;
-    font-weight: normal;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    font-size: 0;
+    line-height: 0;
     background-color: transparent;
-    color: #e63946;
-    border: 1px solid #e63946;
-    border-radius: 4px;
+    color: var(--primary-dark);
+    border: none;
+    border-radius: 50%;
+}
+
+.result-card-delete-btn::before {
+    content: "×";
+    font-size: 14px;
+    font-weight: 700;
 }
 
 .result-card-delete-btn:hover {
-    background-color: #e63946;
-    color: #ffffff;
+    background-color: rgba(0, 0, 0, 0.08);
 }
 
-/* 8. 영양소 충족률 막대그래프 (nutrition.js) */
+/* 9. 영양소 요약: 막대그래프(좌) + 칼로리 강조 카드(우) 가로 배치 */
+.nutrition-summary-split {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 20px;
+    align-items: stretch;
+    text-align: left;
+}
+
 .nutrition-bars-wrap {
     display: flex;
     flex-direction: column;
+    justify-content: center;
     gap: 12px;
-    text-align: left;
 }
 
 .nutrition-bar-label {
     display: flex;
     justify-content: space-between;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     margin-bottom: 4px;
+    color: var(--text-muted);
 }
 
 .nutrition-bar-track {
     background-color: var(--secondary-color);
-    border-radius: 6px;
-    height: 12px;
+    border-radius: 999px;
+    height: 8px;
     overflow: hidden;
 }
 
 .nutrition-bar-fill {
     height: 100%;
-    border-radius: 6px;
+    border-radius: 999px;
     transition: width 0.3s ease;
 }
 
-/* 9. 레시피 그룹(냉장고 재료로만 가능 / 추천 재료 필요) 구분 (recipes.js) */
-.recipe-group + .recipe-group {
-    margin-top: 24px;
-    padding-top: 20px;
-    border-top: 1px solid var(--border-color);
+/* 칼로리 권장량 대비 퍼센트를 강조해서 보여주는 카드 */
+.nutrition-calorie-card {
+    background: linear-gradient(135deg, var(--primary-soft), #eafff2);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 6px;
 }
 
-.recipe-group-title {
-    font-size: 1.1rem;
-    margin-bottom: 12px;
+.nutrition-calorie-icon {
+    font-size: 1.8rem;
 }
 
-/* 10. 기본 소스 보유 체크리스트 (recipes.js가 값을 읽어 레시피 추천 요청에 반영) */
+.nutrition-calorie-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.nutrition-calorie-value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--text-color);
+}
+
+.nutrition-calorie-value small {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-left: 4px;
+}
+
+.nutrition-calorie-badge {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 999px;
+}
+
+.nutrition-calorie-badge.status-high {
+    background-color: var(--primary-soft);
+    color: var(--primary-dark);
+}
+
+.nutrition-calorie-badge.status-mid {
+    background-color: #fef3c7;
+    color: #b45309;
+}
+
+.nutrition-calorie-badge.status-low {
+    background-color: var(--danger-soft);
+    color: var(--danger-color);
+}
+
+/* 10. 기본 소스 보유 체크리스트 */
 .pantry-checklist {
     display: flex;
     flex-wrap: wrap;
@@ -296,12 +506,12 @@ button {
     display: flex;
     align-items: center;
     gap: 4px;
-    font-weight: normal;
-    font-size: 0.9rem;
+    font-weight: 500;
+    font-size: 0.88rem;
     background-color: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: 20px;
-    padding: 6px 12px;
+    border-radius: 999px;
+    padding: 8px 14px;
     cursor: pointer;
 }
 
@@ -309,7 +519,7 @@ button {
     accent-color: var(--primary-color);
 }
 
-/* 11. 부족 영양소 카드 (nutrition.js) */
+/* 11. 부족 영양소 카드 */
 #deficient-cards {
     text-align: left;
 }
@@ -317,42 +527,42 @@ button {
 .deficient-cards-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 10px;
 }
 
 .deficient-card {
     display: flex;
     align-items: center;
     gap: 10px;
-    background-color: #fff5f5;
-    border: 1px solid #ffc9c9;
-    border-radius: 10px;
+    background-color: var(--danger-soft);
+    border: 1px solid #fecaca;
+    border-radius: var(--radius-sm);
     padding: 12px 14px;
-    width: calc(50% - 6px);
-    min-width: 160px;
+    width: calc(50% - 5px);
+    min-width: 150px;
     box-sizing: border-box;
     text-align: left;
 }
 
 .deficient-card-icon {
-    font-size: 1.4rem;
+    font-size: 1.3rem;
     flex-shrink: 0;
 }
 
 .deficient-card-label {
-    font-weight: bold;
-    font-size: 0.95rem;
+    font-weight: 700;
+    font-size: 0.92rem;
 }
 
 .deficient-card-percentage {
-    color: #e63946;
-    font-size: 0.85rem;
-    font-weight: bold;
+    color: var(--danger-color);
+    font-size: 0.82rem;
+    font-weight: 700;
 }
 
 .deficient-card-detail {
-    color: #868e96;
-    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-size: 0.76rem;
 }
 
 .deficient-supplements {
@@ -368,52 +578,109 @@ button {
 
 .supplement-chip {
     display: inline-block;
-    background-color: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 20px;
+    background-color: var(--primary-soft);
+    color: var(--primary-dark);
+    border-radius: 999px;
     padding: 4px 12px;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
+    font-weight: 600;
 }
 
-/* 12. 추천 레시피 카드 (recipes.js) */
+/* 12. 레시피 추천 화면 */
+.view-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+}
+
+/* [내 냉장고 재료로만 가능한 레시피] | [추천 재료가 들어간 레시피] 좌우 분할 배치 */
 #recipe-cards {
-    text-align: left;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    align-items: start;
 }
 
+.recipe-group + .recipe-group {
+    padding-left: 32px;
+    border-left: 1px solid var(--border-color);
+}
+
+.recipe-group-title {
+    font-size: 1.2rem;
+    margin-bottom: 4px;
+}
+
+.recipe-group-desc {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    margin-bottom: 18px;
+}
+
+/* 카드 그리드: 카드 하나가 좌(재료)/우(조리순서)로 나뉘어 넓어졌으므로 최소 폭을 넉넉히 잡는다 */
+.recipe-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    gap: 18px;
+}
+
+/* 카드 내부를 왼쪽(레시피명/재료) | 오른쪽(조리순서)로 가로 분할한다 */
 .recipe-card {
     background-color: #ffffff;
     border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 18px;
-    margin-bottom: 16px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+}
+
+.recipe-card:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-2px);
+}
+
+.recipe-card-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.recipe-card-thumb {
+    width: 100%;
+    height: 100px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, var(--primary-soft), #eafff2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.2rem;
+    margin-bottom: 14px;
 }
 
 .recipe-title {
-    font-size: 1.15rem;
-    color: var(--primary-dark);
-    margin-bottom: 14px;
+    font-size: 1.05rem;
+    color: var(--text-color);
+    margin-bottom: 12px;
+    font-weight: 700;
 }
 
 .recipe-ingredients-wrap {
     display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 14px;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .ing-block {
-    flex: 1;
-    min-width: 160px;
     background-color: var(--card-bg);
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     padding: 10px 12px;
 }
 
 .ing-block h4 {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     margin-bottom: 6px;
-    color: var(--text-color);
+    color: var(--text-muted);
 }
 
 .ing-block ul {
@@ -421,26 +688,84 @@ button {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    font-size: 0.85rem;
+    font-size: 0.84rem;
 }
 
-.recipe-steps-wrap h4 {
-    font-size: 0.9rem;
+/* 조리 순서: 더 이상 접지 않고 카드 오른쪽에 항상 펼쳐서 보여준다 */
+.recipe-card-steps {
+    flex: 1;
+    min-width: 0;
+    background-color: var(--card-bg);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+}
+
+.recipe-card-steps h4 {
+    font-size: 0.86rem;
     margin-bottom: 8px;
 }
 
-.recipe-steps-wrap ol {
+.recipe-card-steps ol {
     list-style: none;
     display: flex;
     flex-direction: column;
     gap: 6px;
-    font-size: 0.88rem;
+    font-size: 0.86rem;
     line-height: 1.5;
+    color: var(--text-muted);
 }
 
 .loading-text {
-    color: #868e96;
+    grid-column: 1 / -1;
+    color: var(--text-muted);
     font-style: italic;
     text-align: center;
-    padding: 12px 0;
+    padding: 24px 0;
+}
+
+/* recipes.js가 인라인 스타일과 함께 붙이는 "출처 없음" 안내 배너: 좌우 두 패널 전체 폭을 차지하게 한다 */
+.recipe-llm-notice {
+    grid-column: 1 / -1;
+}
+
+/* 13. 반응형 */
+@media (max-width: 900px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* 냉장고 재료만/추천 재료 두 패널을 좌우 분할 대신 위아래로 쌓는다 */
+    #recipe-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .recipe-group + .recipe-group {
+        padding-left: 0;
+        border-left: none;
+        padding-top: 28px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .nutrition-summary-split {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 560px) {
+    .container {
+        padding: 20px 16px 100px;
+    }
+
+    .recipe-cards-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* 좁은 화면에서는 카드 내부 좌우 분할도 위아래로 쌓는다 */
+    .recipe-card {
+        flex-direction: column;
+    }
+
+    .deficient-card {
+        width: 100%;
+    }
 }
