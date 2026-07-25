@@ -41,6 +41,10 @@
             <div id="result-cards" class="cards-container">
                 <p class="placeholder-text">인식된 식재료 카드 목록이 여기에 표시됩니다.</p>
             </div>
+            <div class="form-group">
+                <label for="manual-ingredient-input">식재료 직접 추가</label>
+                <input type="text" id="manual-ingredient-input" placeholder="추가할 식재료 이름을 입력하세요">
+            </div>
             <div class="btn-group">
                 <button id="add-ingredient-btn" class="btn-secondary">식재료 직접 추가</button>
                 <button id="analyze-btn" class="btn-primary">영양소 분석하기</button>
@@ -54,6 +58,20 @@
             </div>
             <div id="deficient-cards" class="cards-container">
                 <p class="placeholder-text">나이와 성별 대비 부족한 영양소 카드가 여기에 표시됩니다.</p>
+            </div>
+            <div class="form-group">
+                <label>기본 소스 보유 현황 (체크한 항목은 레시피 추천 시 보유 재료로 반영됩니다)</label>
+                <div id="pantry-checklist" class="pantry-checklist">
+                    <label><input type="checkbox" value="소금"> 소금</label>
+                    <label><input type="checkbox" value="설탕"> 설탕</label>
+                    <label><input type="checkbox" value="간장"> 간장</label>
+                    <label><input type="checkbox" value="된장"> 된장</label>
+                    <label><input type="checkbox" value="고추장"> 고추장</label>
+                    <label><input type="checkbox" value="식초"> 식초</label>
+                    <label><input type="checkbox" value="참기름"> 참기름</label>
+                    <label><input type="checkbox" value="후추"> 후추</label>
+                    <label><input type="checkbox" value="고춧가루"> 고춧가루</label>
+                </div>
             </div>
             <button id="recommend-btn" class="btn-primary">맞춤형 레시피 추천받기</button>
         </section>

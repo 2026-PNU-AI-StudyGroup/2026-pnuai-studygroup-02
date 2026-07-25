@@ -7,7 +7,7 @@
 const appState = {
     // [프로필 정보] 성별 및 나이 정보 관리
     profile: {
-        gender: null, // 'male' | 'female' | null
+        gender: null, // '남' | '여' | null (백엔드 profile.py/nutrition.py가 요구하는 값과 동일)
         age: null     // number | null
     },
     
@@ -187,6 +187,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (name) {
                 addManualIngredient(name);
                 if (inputEl) inputEl.value = '';
+
+                // [STATE] 카드 목록도 함께 갱신한다 (renderResultCards는 upload.js에 정의됨).
+                const resultCardsContainer = document.getElementById('result-cards');
+                if (typeof renderResultCards === 'function' && resultCardsContainer) {
+                    renderResultCards(appState.recognized, resultCardsContainer);
+                }
             }
         });
     }

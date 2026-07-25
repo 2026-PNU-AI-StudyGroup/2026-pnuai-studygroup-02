@@ -1,5 +1,88 @@
 // [UPLOAD] 근영 담당. 이미지 선택, 확장자 검증, 개별 삭제 및 미리보기 렌더링
 
+/**
+ * [UPLOAD] 인식된 식재료 카드 목록을 렌더링한다. 이름 수정과 개별 삭제를 지원한다.
+ * @param {Array} recognizedItems - appState.recognized 배열
+ * @param {HTMLElement} container - id='result-cards' 요소
+ */
+function renderResultCards(recognizedItems, container) {
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!recognizedItems || recognizedItems.length === 0) {
+        container.innerHTML = '<p class="placeholder-text">인식된 식재료 카드 목록이 여기에 표시됩니다.</p>';
+        return;
+    }
+
+    recognizedItems.forEach((item) => {
+        const card = document.createElement('div');
+        card.className = 'result-card';
+
+        // 삭제 버튼: image_id가 있으면 removeIngredient()로 이미지/인식결과를 함께 정리하고,
+        // 수동 추가 항목(image_id 없음)은 recognized 배열에서 직접 제거한다.
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'result-card-delete-btn';
+        deleteBtn.textContent = '삭제';
+        deleteBtn.addEventListener('click', () => {
+            if (item.image_id) {
+                removeIngredient(item.image_id);
+            } else {
+                appState.recognized = appState.recognized.filter((recognized) => recognized !== item);
+                appState.nutrition = null;
+                appState.recipes = null;
+                if (typeof canAnalyze === 'function') canAnalyze();
+            }
+            renderResultCards(appState.recognized, container);
+        });
+
+        if (!item.name) {
+            // [UPLOAD] 인식 실패 항목 (image_service.predict_single이 name=null, error=사유를 반환)
+            const errorText = document.createElement('p');
+            errorText.className = 'result-card-error';
+            errorText.textContent = `⚠️ 인식 실패: ${item.error || '이미지를 분류하지 못했습니다.'}`;
+
+            card.appendChild(errorText);
+            card.appendChild(deleteBtn);
+            container.appendChild(card);
+            return;
+        }
+
+        // 이름 수정 입력창: 값이 바뀌면 updateIngredient()/직접 수정으로 반영한다.
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.value = item.name;
+        nameInput.className = 'result-card-name-input';
+
+        nameInput.addEventListener('change', () => {
+            const newName = nameInput.value.trim();
+            if (!newName) return;
+
+            if (item.image_id) {
+                updateIngredient(item.image_id, newName);
+            } else {
+                item.name = newName;
+                item.edited = true;
+                appState.nutrition = null;
+                appState.recipes = null;
+                if (typeof canAnalyze === 'function') canAnalyze();
+            }
+        });
+
+        const confidenceText = document.createElement('span');
+        confidenceText.className = 'result-card-confidence';
+        confidenceText.textContent = typeof item.confidence === 'number'
+            ? `신뢰도 ${Math.round(item.confidence * 100)}%`
+            : '';
+
+        card.appendChild(nameInput);
+        card.appendChild(confidenceText);
+        card.appendChild(deleteBtn);
+        container.appendChild(card);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const fileInput = document.getElementById('file-input');
     const previewList = document.getElementById('preview-list');
@@ -29,16 +112,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // 이미지 배열을 순회하며 미리보기 카드 생성 (addImage()가 이미 만들어 둔 previewUrl 재사용)
         appState.images.forEach((image) => {
             const previewItem = document.createElement('div');
-            previewItem.className = 'relative border rounded-lg p-2 flex items-center justify-between bg-white shadow-sm';
+            previewItem.className = 'preview-item';
 
             previewItem.innerHTML = `
-                <div class="flex items-center gap-2">
-                    <img src="${image.previewUrl}" alt="preview" class="w-12 h-12 object-cover rounded">
-                    <span class="text-xs truncate max-w-[120px]">${image.file.name}</span>
-                </div>
-                <button type="button" data-image-id="${image.image_id}" class="delete-btn text-red-500 hover:text-red-700 text-xs px-2 py-1">
-                    삭제
-                </button>
+                <img src="${image.previewUrl}" alt="preview" class="preview-thumb">
+                <span class="preview-filename">${image.file.name}</span>
+                <button type="button" data-image-id="${image.image_id}" class="delete-btn">삭제</button>
             `;
 
             // 개별 삭제 버튼 이벤트: removeIngredient()가 images/recognized/nutrition/recipes를 함께 정리한다.
@@ -118,7 +197,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } catch (error) {
                 console.error('인식 실패:', error);
-                alert(`오류 발생: ${error.message}`);
+
+                // app.js에 정의된 공통 전역 에러 배너를 호출하여 공유
+                if (typeof app !== 'undefined' && typeof app.showCommonError === 'function') {
+                    app.showCommonError(error.message || '식재료 인식 처리 중 오류가 발생했습니다.');
+                }
             } finally {
                 recognizeBtn.disabled = false;
                 recognizeBtn.textContent = '식재료 인식하기';

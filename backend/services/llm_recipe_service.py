@@ -174,14 +174,20 @@ def _build_prompt(
         mode_rule = """
 - 사용자가 보유한 재료를 최대한 우선 활용하세요.
 - 서로 다른 레시피를 반드시 3개 이상 생성하세요.
-- 추가 재료는 가능한 한 적게 사용하세요.
+- 이 중 최소 2개는 additional_ingredients가 완전히 빈 배열이어야 합니다.
+  즉, 기본 양념(물·소금·후추·식용유)을 제외하고는 보유 재료만으로 바로 완성할 수 있는
+  레시피여야 하며, 장보기 목록이 전혀 필요 없어야 합니다.
+- 나머지 레시피도 추가 재료는 가능한 한 적게, 꼭 필요한 경우에만 사용하세요.
 """.strip()
 
     else:
         mode_rule = f"""
-- 부족한 영양소인 '{nutrients_text}'를 보완할 재료를 포함하세요.
-- 영양 보완 재료는 additional_ingredients에 넣으세요.
-- 최소 하나 이상의 레시피에 영양 보완용 추가 재료가 있어야 합니다.
+- 서로 다른 레시피를 반드시 2개 이상 생성하세요.
+- 이 중 최소 1개는 additional_ingredients가 완전히 빈 배열이어야 합니다.
+  즉, 기본 양념(물·소금·후추·식용유)을 제외하고는 보유 재료만으로 바로 완성할 수 있는
+  레시피여야 하며, 장보기 목록이 전혀 필요 없어야 합니다.
+- 이 중 최소 1개는 부족한 영양소인 '{nutrients_text}'를 보완할 재료를 포함해야 하며,
+  그 영양 보완 재료는 additional_ingredients에 넣으세요.
 """.strip()
 
     retry_rule = ""
@@ -195,7 +201,8 @@ def _build_prompt(
 """.strip()
 
     return f"""
-당신은 한국 가정식 레시피를 만드는 요리 전문가입니다.
+당신은 다양한 나라의 요리에 능숙한 요리 전문가입니다. 한식에 국한하지 말고,
+보유 재료에 가장 잘 어울리는 요리라면 어느 나라 스타일이든 자유롭게 제안하세요.
 
 [사용자가 보유한 재료]
 {ingredients_text}
@@ -324,8 +331,19 @@ def _validate_business_rules(
             "owned_first 모드는 레시피가 3개 이상이어야 합니다."
         )
 
+    # [LLM-RECIPE] 영양 보충 모드는 "냉장고 재료만 가능" 1개 + "영양 보완 재료 포함" 1개가
+    # 한 레시피에 동시에 몰리지 않도록 최소 2개 이상이어야 한다.
+    if (
+        mode == "nutrition_supplement"
+        and len(response.recipes) < 2
+    ):
+        raise ValueError(
+            "nutrition_supplement 모드는 레시피가 2개 이상이어야 합니다."
+        )
+
     recipe_ids: set[str] = set()
     has_additional_ingredient = False
+    has_fridge_only_recipe = False
 
     for recipe in response.recipes:
         # [LLM-RECIPE] recipe_id가 중복되지 않았는지 검사한다.
@@ -392,6 +410,8 @@ def _validate_business_rules(
 
         if cleaned_additional:
             has_additional_ingredient = True
+        else:
+            has_fridge_only_recipe = True
 
         # [LLM-RECIPE] 공백뿐인 조리 단계를 제거한다.
         cleaned_steps = [
@@ -413,6 +433,13 @@ def _validate_business_rules(
 
         # [LLM-RECIPE] RAG가 아니므로 sources는 항상 빈 배열이다.
         recipe.sources = []
+
+    # [LLM-RECIPE] 모드와 무관하게, 추가 재료 없이 보유 재료만으로 가능한 레시피가
+    # 최소 1개는 반드시 있어야 한다(프론트의 "냉장고 재료만으로 가능한 레시피" 그룹이 비지 않도록).
+    if not has_fridge_only_recipe:
+        raise ValueError(
+            "추가 재료 없이 보유 재료만으로 완성 가능한 레시피가 최소 1개 이상 있어야 합니다."
+        )
 
     # [LLM-RECIPE] 영양 보충 모드의 추가 규칙을 검사한다.
     if mode == "nutrition_supplement":

@@ -132,3 +132,315 @@ button {
 .btn-secondary:hover {
     background-color: var(--secondary-dark);
 }
+
+/* 6. 이미지 미리보기 (upload.js): 섹션 가로 폭을 최대한 활용해 카드가 옆으로 나란히 배치되다가 줄바꿈된다 */
+#preview-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    justify-content: flex-start;
+}
+
+.preview-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 120px;
+    background-color: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.preview-thumb {
+    width: 96px;
+    height: 96px;
+    object-fit: cover;
+    border-radius: 6px;
+}
+
+.preview-filename {
+    font-size: 0.72rem;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+}
+
+/* 전역 button 스타일(큰 버튼용)을 덮어써서 미리보기 카드 안의 삭제 버튼을 작게 만든다 */
+#preview-list .delete-btn {
+    flex: none;
+    width: auto;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    font-weight: normal;
+    background-color: transparent;
+    color: #e63946;
+    border: 1px solid #e63946;
+    border-radius: 4px;
+}
+
+#preview-list .delete-btn:hover {
+    background-color: #e63946;
+    color: #ffffff;
+}
+
+/* 7. 인식 결과 카드 목록: 항목이 많아져도 섹션이 무한정 늘어나지 않도록 스크롤 처리 */
+#result-cards {
+    max-height: 320px;
+    overflow-y: auto;
+    text-align: left;
+}
+
+.result-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+}
+
+.result-card-name-input {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+
+.result-card-confidence {
+    flex-shrink: 0;
+    font-size: 0.78rem;
+    color: #868e96;
+}
+
+.result-card-error {
+    flex: 1;
+    color: #e63946;
+    font-size: 0.85rem;
+}
+
+/* 전역 button 스타일(큰 버튼용)을 덮어써서 인식 결과 카드 안의 삭제 버튼을 작게 만든다 */
+.result-card-delete-btn {
+    flex: none;
+    width: auto;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    font-weight: normal;
+    background-color: transparent;
+    color: #e63946;
+    border: 1px solid #e63946;
+    border-radius: 4px;
+}
+
+.result-card-delete-btn:hover {
+    background-color: #e63946;
+    color: #ffffff;
+}
+
+/* 8. 영양소 충족률 막대그래프 (nutrition.js) */
+.nutrition-bars-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-align: left;
+}
+
+.nutrition-bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+}
+
+.nutrition-bar-track {
+    background-color: var(--secondary-color);
+    border-radius: 6px;
+    height: 12px;
+    overflow: hidden;
+}
+
+.nutrition-bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    transition: width 0.3s ease;
+}
+
+/* 9. 레시피 그룹(냉장고 재료로만 가능 / 추천 재료 필요) 구분 (recipes.js) */
+.recipe-group + .recipe-group {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.recipe-group-title {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+}
+
+/* 10. 기본 소스 보유 체크리스트 (recipes.js가 값을 읽어 레시피 추천 요청에 반영) */
+.pantry-checklist {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.pantry-checklist label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: normal;
+    font-size: 0.9rem;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+.pantry-checklist input[type="checkbox"] {
+    accent-color: var(--primary-color);
+}
+
+/* 11. 부족 영양소 카드 (nutrition.js) */
+#deficient-cards {
+    text-align: left;
+}
+
+.deficient-cards-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.deficient-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: #fff5f5;
+    border: 1px solid #ffc9c9;
+    border-radius: 10px;
+    padding: 12px 14px;
+    width: calc(50% - 6px);
+    min-width: 160px;
+    box-sizing: border-box;
+    text-align: left;
+}
+
+.deficient-card-icon {
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+
+.deficient-card-label {
+    font-weight: bold;
+    font-size: 0.95rem;
+}
+
+.deficient-card-percentage {
+    color: #e63946;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+.deficient-card-detail {
+    color: #868e96;
+    font-size: 0.78rem;
+}
+
+.deficient-supplements {
+    margin-top: 14px;
+}
+
+.supplement-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.supplement-chip {
+    display: inline-block;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.85rem;
+}
+
+/* 12. 추천 레시피 카드 (recipes.js) */
+#recipe-cards {
+    text-align: left;
+}
+
+.recipe-card {
+    background-color: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.recipe-title {
+    font-size: 1.15rem;
+    color: var(--primary-dark);
+    margin-bottom: 14px;
+}
+
+.recipe-ingredients-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.ing-block {
+    flex: 1;
+    min-width: 160px;
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.ing-block h4 {
+    font-size: 0.82rem;
+    margin-bottom: 6px;
+    color: var(--text-color);
+}
+
+.ing-block ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.85rem;
+}
+
+.recipe-steps-wrap h4 {
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+}
+
+.recipe-steps-wrap ol {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+
+.loading-text {
+    color: #868e96;
+    font-style: italic;
+    text-align: center;
+    padding: 12px 0;
+}

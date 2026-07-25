@@ -2,6 +2,69 @@
 // 애플리케이션 화면 섹션 초기화 및 전역 공통 에러 핸들링 시스템
 
 const app = {
+    // 0. 성별 토글 버튼을 생성하고, 클릭 시 appState.profile.gender를 갱신한다.
+    //    백엔드(profile.py/nutrition.py)가 '남'/'여' 문자열을 그대로 요구하므로 값도 '남'/'여'로 저장한다.
+    initGenderToggle() {
+        const container = document.getElementById('gender-toggle');
+        if (!container) return;
+
+        const GENDER_OPTIONS = [
+            { value: '남', label: '남성' },
+            { value: '여', label: '여성' }
+        ];
+
+        container.innerHTML = '';
+        Object.assign(container.style, {
+            display: 'flex',
+            gap: '12px',
+            justifyContent: 'center'
+        });
+
+        const updateActiveStyles = () => {
+            container.querySelectorAll('.gender-option-btn').forEach((btn) => {
+                const isActive = btn.dataset.value === appState.profile.gender;
+                btn.style.backgroundColor = isActive ? 'var(--primary-color)' : '';
+                btn.style.color = isActive ? '#ffffff' : '';
+            });
+        };
+
+        GENDER_OPTIONS.forEach((option) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = option.label;
+            btn.className = 'btn-secondary gender-option-btn';
+            btn.dataset.value = option.value;
+
+            btn.addEventListener('click', () => {
+                appState.profile.gender = option.value;
+                updateActiveStyles();
+
+                if (typeof canAnalyze === 'function') {
+                    canAnalyze();
+                }
+            });
+
+            container.appendChild(btn);
+        });
+
+        updateActiveStyles();
+    },
+
+    // 0-1. 나이 입력값을 appState.profile.age에 반영한다.
+    initAgeInput() {
+        const ageInput = document.getElementById('age-input');
+        if (!ageInput) return;
+
+        ageInput.addEventListener('input', () => {
+            const value = parseInt(ageInput.value, 10);
+            appState.profile.age = Number.isNaN(value) ? null : value;
+
+            if (typeof canAnalyze === 'function') {
+                canAnalyze();
+            }
+        });
+    },
+
     // 1. 페이지 최초 로드 시 HTML 내부의 모든 유동 섹션을 대기 상태로 초기화 시키는 함수
     initSections() {
         console.log('[APP] HTML에 명시된 모든 섹션을 대기 상태로 초기화합니다.');
@@ -92,7 +155,9 @@ const app = {
     }
 };
 
-// DOM트리 생성이 완료되는 즉시 섹션 초기화 메서드 가동
+// DOM트리 생성이 완료되는 즉시 섹션 초기화 및 프로필 입력 UI 연동 메서드 가동
 document.addEventListener('DOMContentLoaded', () => {
     app.initSections();
+    app.initGenderToggle();
+    app.initAgeInput();
 });

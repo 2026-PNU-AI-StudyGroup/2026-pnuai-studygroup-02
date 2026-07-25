@@ -49,7 +49,21 @@ async def predict_ingredients(
             },
         )
 
-    return image_service.predict_batch(images)
+    result = image_service.predict_batch(images)
+
+    # [ROUTER] 모델은 영어 클래스명(potato 등)을 반환하므로, ingredient_aliases.json 기준으로
+    # 사용자에게 보여줄 한글 재료명(감자 등)으로 변환한다. 매핑에 없는 이름은 원본을 그대로 둔다.
+    aliases = _load_aliases()
+
+    for item in result.get("results", []):
+        if item.get("name"):
+            item["name"] = aliases.get(item["name"], item["name"])
+
+        for candidate in item.get("candidates", []):
+            if candidate.get("name"):
+                candidate["name"] = aliases.get(candidate["name"], candidate["name"])
+
+    return result
 
 
 @router.get("/search", summary="재료명 검색")
