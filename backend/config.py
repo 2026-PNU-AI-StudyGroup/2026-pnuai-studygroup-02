@@ -9,9 +9,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # [MAIN] Gemini(Anthropic) API 호출에 사용하는 키. 없으면 Mock 응답으로 대체된다.
-    ANTHROPIC_API_KEY: str = ""
-
     # [MAIN] true면 외부 API/모델 호출 없이 고정된 Mock 데이터를 반환한다.
     MOCK_MODE: bool = False
 

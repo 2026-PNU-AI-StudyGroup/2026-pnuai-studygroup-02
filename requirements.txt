@@ -3,6 +3,7 @@ uvicorn
 pydantic>=2,<3
 pydantic-settings
 python-dotenv
+python-multipart
 pandas
 google-genai
 tensorflow

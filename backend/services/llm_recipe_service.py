@@ -14,6 +14,7 @@ from google import genai
 from google.genai import types
 from pydantic import ValidationError
 
+from backend.config import settings
 from backend.schemas.recipe import RecipeMode, RecipeResponse
 
 
@@ -76,26 +77,9 @@ class LLMEmptyResponseError(ValueError):
     """LLM 응답 본문이 비어 있는 경우."""
 
 
-# [HANDOVER] 환경변수 MOCK_MODE가 true인지 확인한다.
+# [HANDOVER] MOCK_MODE 여부를 확인한다. (backend/config.py의 공용 설정을 사용, image_service.py와 동일한 기준)
 def _is_mock_mode() -> bool:
-    """
-    MOCK_MODE 환경변수가 true이면 실제 LLM을 호출하지 않는다.
-
-    허용되는 true 값:
-    true, 1, yes, on
-    """
-
-    mock_mode_value = os.getenv(
-        "MOCK_MODE",
-        "false",
-    ).strip().lower()
-
-    return mock_mode_value in {
-        "true",
-        "1",
-        "yes",
-        "on",
-    }
+    return settings.MOCK_MODE
 
 
 # [LLM-RECIPE] 입력 목록의 공백과 중복을 제거한다.

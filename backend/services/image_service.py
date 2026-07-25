@@ -5,12 +5,13 @@
 import io
 import json
 import logging
-import os
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 from PIL import Image, UnidentifiedImageError
+
+from backend.config import settings
 
 
 logger = logging.getLogger(__name__)
@@ -33,8 +34,8 @@ ARTIFACT_DIR = (
 MODEL_PATH = ARTIFACT_DIR / "ingredient_model.keras"
 CLASS_NAMES_PATH = ARTIFACT_DIR / "class_names.json"
 
-# [IMAGE] MOCK_MODE=true면 모델을 로드하지 않고 고정 결과를 반환한다.
-MOCK_MODE = os.getenv("MOCK_MODE", "false").lower() == "true"
+# [IMAGE] MOCK_MODE=true면 모델을 로드하지 않고 고정 결과를 반환한다. (backend/config.py의 공용 설정을 사용)
+MOCK_MODE = settings.MOCK_MODE
 
 # [IMAGE] MOCK_MODE에서 사용할 고정 결과
 MOCK_CANDIDATES: list[dict[str, Any]] = [
