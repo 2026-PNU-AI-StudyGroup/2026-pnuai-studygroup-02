@@ -21,6 +21,15 @@ function renderNutritionBars(nutritionData) {
     `;
 }
 
+// [NUTRITION] appState.profile.gender('male'/'female')를 백엔드가 요구하는 '남'/'여'로 변환한다.
+const GENDER_TO_BACKEND = {
+    male: '남',
+    female: '여'
+};
+
+// [NUTRITION] serving_g(실제 섭취량) 입력 UI가 아직 없으므로 nutrition.csv 기준량인 100g을 기본값으로 사용한다.
+const DEFAULT_SERVING_G = 100;
+
 /**
  * [NUTRITION] 영양 분석 실행 함수 (api.analyzeNutrition 호출)
  */
@@ -28,10 +37,18 @@ async function handleNutritionAnalysis() {
     console.log('[NUTRITION] 영양 분석 API 요청 시작...');
 
     try {
-        // [NUTRITION] appState의 recognized 식재료 이름과 profile 데이터를 넘김
+        // [NUTRITION] 백엔드 AnalyzeRequest 스키마
+        // ({ profile: { gender, age }, ingredients: [{ ingredient_id, name, serving_g }] })에 맞춰 변환한다.
         const payload = {
-            ingredients: appState.recognized.map(item => item.name),
-            profile: appState.profile
+            profile: {
+                gender: GENDER_TO_BACKEND[appState.profile.gender] || appState.profile.gender,
+                age: appState.profile.age
+            },
+            ingredients: appState.recognized.map((item, index) => ({
+                ingredient_id: item.image_id || `manual_${index}`,
+                name: item.name,
+                serving_g: DEFAULT_SERVING_G
+            }))
         };
 
         // api.js의 analyzeNutrition 함수 호출 (현재 Mock 응답 반환)

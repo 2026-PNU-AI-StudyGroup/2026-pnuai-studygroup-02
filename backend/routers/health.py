@@ -1,6 +1,7 @@
 # backend/routers/health.py
 
-# [MAIN] 현지 담당. 서버 생존 확인용 헬스체크 엔드포인트.
+# [ROUTER] 현지 담당. 한국어 주석 필수
+# 서버 생존 확인용 헬스체크 엔드포인트.
 
 from fastapi import APIRouter
 
