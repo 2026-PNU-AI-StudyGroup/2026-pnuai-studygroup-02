@@ -16,7 +16,7 @@ const appState = {
     images: [],
     
     // [인식 결과] AI가 이미지에서 식별한 식재료 및 사용자 수정 데이터
-    // 구조: { image_id: string, name: string, confidence: number, candidates: string[], edited: boolean }
+    // 구조: { image_id: string, name: string, confidence: number, candidates: string[], edited: boolean, servingG: number }
     recognized: [],
     
     // [영양 분석] 백엔드로부터 받은 영양소 충족률 및 부족 영양소 정보
@@ -128,8 +128,9 @@ function removeIngredient(imageId) {
 /**
  * [STATE] image_id 없이 수동으로 식재료를 목록에 추가한다.
  * @param {string} name - 식재료 이름
+ * @param {number} [servingG=100] - 용량(g) (기본값 100)
  */
-function addManualIngredient(name) {
+function addManualIngredient(name, servingG = 100) {
     if (!name || !name.trim()) return;
 
     const manualItem = {
@@ -137,7 +138,8 @@ function addManualIngredient(name) {
         name: name.trim(),
         confidence: 1.0,
         candidates: [],
-        edited: true
+        edited: true,
+        servingG: Math.max(1, Number(servingG) || 100) // [추가] 기본값 100g
     };
 
     appState.recognized.push(manualItem);
@@ -152,7 +154,25 @@ function addManualIngredient(name) {
     }
 
     canAnalyze();
-    console.log(`[STATE] 수동 식재료 추가 완료: ${name.trim()}`);
+    console.log(`[STATE] 수동 식재료 추가 완료: ${name.trim()} (${manualItem.servingG}g)`);
+}
+
+/**
+ * [STATE] 특정 식재료의 용량(servingG)을 업데이트한다.
+ * @param {number} index - appState.recognized 배열 내 인덱스
+ * @param {number} grams - 변경할 용량(g)
+ */
+function updateIngredientServing(index, grams) {
+    if (appState.recognized[index]) {
+        const parsedGrams = Math.max(1, Number(grams) || 100);
+        appState.recognized[index].servingG = parsedGrams;
+
+        // 용량이 변경되었으므로 기존 분석 결과 초기화
+        appState.nutrition = null;
+        appState.recipes = null;
+
+        console.log(`[STATE] 용량 변경 완료 - index: ${index}, name: ${appState.recognized[index].name}, servingG: ${parsedGrams}g`);
+    }
 }
 
 // [STATE] DOM 로드 완료 시 버튼 연동 및 초기 상태 설정
