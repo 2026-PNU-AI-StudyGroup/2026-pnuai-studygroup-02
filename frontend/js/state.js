@@ -16,6 +16,7 @@ const appState = {
     images: [],
     
     // [인식 결과] AI가 이미지에서 식별한 식재료 및 사용자 수정 데이터
+    // [STATE] 근영 담당: servingG(기본값 100) 필드 추가
     // 구조: { image_id: string, name: string, confidence: number, candidates: string[], edited: boolean, servingG: number }
     recognized: [],
     
@@ -77,11 +78,11 @@ function removeImage(imageId) {
 }
 
 // ==========================================
-// [STATE] 추가 요구사항 및 보완 함수들
+// [STATE] 추가 요구사항 및 보완 함수들 (근영 담당)
 // ==========================================
 
 /**
- * [STATE] 프로필 설정 완료 여부를 확인한다.
+ * [STATE] 근영 담당. 프로필 설정 완료 여부를 확인한다.
  * @returns {boolean}
  */
 function isProfileComplete() {
@@ -89,7 +90,7 @@ function isProfileComplete() {
 }
 
 /**
- * [STATE] 프로필 완료 + 확정 재료 1개 이상일 때 analyze-btn disabled 상태를 자동 갱신한다.
+ * [STATE] 근영 담당. 프로필 완료 + 확정 재료 1개 이상일 때 analyze-btn disabled 상태를 자동 갱신한다.
  * @returns {boolean} 분석 가능 여부
  */
 function canAnalyze() {
@@ -107,7 +108,7 @@ function canAnalyze() {
 }
 
 /**
- * [STATE] 사진(images)과 인식 결과(recognized)를 동시에 삭제하고 결과를 초기화한다.
+ * [STATE] 근영 담당. 사진(images)과 인식 결과(recognized)를 동시에 삭제하고 결과를 초기화한다.
  * @param {string} imageId - 삭제할 image_id
  */
 function removeIngredient(imageId) {
@@ -126,7 +127,7 @@ function removeIngredient(imageId) {
 }
 
 /**
- * [STATE] image_id 없이 수동으로 식재료를 목록에 추가한다.
+ * [STATE] 근영 담당. image_id 없이 수동으로 식재료를 목록에 추가한다.
  * @param {string} name - 식재료 이름
  * @param {number} [servingG=100] - 용량(g) (기본값 100)
  */
@@ -139,7 +140,7 @@ function addManualIngredient(name, servingG = 100) {
         confidence: 1.0,
         candidates: [],
         edited: true,
-        servingG: Math.max(1, Number(servingG) || 100) // [추가] 기본값 100g
+        servingG: Math.max(1, Number(servingG) || 100) // [STATE] 기본값 100g
     };
 
     appState.recognized.push(manualItem);
@@ -158,20 +159,53 @@ function addManualIngredient(name, servingG = 100) {
 }
 
 /**
- * [STATE] 특정 식재료의 용량(servingG)을 업데이트한다.
+ * [STATE] 근영 담당. 식재료 용량(servingG) 변경 함수 (범위 검증: 1~2000g)
+ * @param {string|null} imageId - 변경할 식재료의 image_id (수동 추가 항목은 null 가능)
+ * @param {number|string} grams - 변경할 용량(g)
+ * @param {number} [index] - image_id가 null이거나 중복일 때 정확한 항목 지정을 위한 배열 인덱스
+ * @returns {boolean} - 갱신 성공 여부
+ */
+function updateServingG(imageId, grams, index = null) {
+    const parsedGrams = Number(grams);
+
+    // [STATE] 범위 검증: 1~2000g 범위를 벗어나거나 숫자가 아니면 무시하고 오류 표시
+    if (isNaN(parsedGrams) || parsedGrams < 1 || parsedGrams > 2000) {
+        alert("식재료 용량은 1g 이상 2000g 이하로 입력해주세요.");
+        console.warn(`[STATE] 용량 변경 실패 (범위 초과): ${grams}g`);
+        return false;
+    }
+
+    // 대상 식재료 찾기 (인덱스가 지정되면 인덱스 우선, 없으면 imageId 검색)
+    let targetItem = null;
+    if (index !== null && index !== undefined && appState.recognized[index]) {
+        targetItem = appState.recognized[index];
+    } else {
+        targetItem = appState.recognized.find(item => item.image_id === imageId);
+    }
+
+    if (targetItem) {
+        targetItem.servingG = parsedGrams;
+
+        // [STATE] servingG 변경 시 nutrition / recipes 결과를 null로 초기화 (기존 재료 변경 로직과 동일)
+        appState.nutrition = null;
+        appState.recipes = null;
+
+        console.log(`[STATE] 용량 변경 완료 - name: ${targetItem.name}, servingG: ${parsedGrams}g`);
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * [STATE] 근영 담당. 기존 updateIngredientServing 함수와의 호환성을 위한 래퍼 함수 (인덱스 기준)
  * @param {number} index - appState.recognized 배열 내 인덱스
  * @param {number} grams - 변경할 용량(g)
  */
 function updateIngredientServing(index, grams) {
     if (appState.recognized[index]) {
-        const parsedGrams = Math.max(1, Number(grams) || 100);
-        appState.recognized[index].servingG = parsedGrams;
-
-        // 용량이 변경되었으므로 기존 분석 결과 초기화
-        appState.nutrition = null;
-        appState.recipes = null;
-
-        console.log(`[STATE] 용량 변경 완료 - index: ${index}, name: ${appState.recognized[index].name}, servingG: ${parsedGrams}g`);
+        const item = appState.recognized[index];
+        updateServingG(item.image_id, grams, index);
     }
 }
 

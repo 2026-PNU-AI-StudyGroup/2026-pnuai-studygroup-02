@@ -1,7 +1,8 @@
-// [UPLOAD] 근영 담당. 이미지 선택, 확장자 검증, 개별 삭제 및 미리보기 렌더링
+// [UPLOAD] 근영 담당. 이미지 선택, 확장자 검증, 개별 삭제 및 미리보기/결과카드 렌더링
 
 /**
- * [UPLOAD] 인식된 식재료 카드 목록을 렌더링한다. 이름은 읽기 전용이며 삭제만 가능하다.
+ * [UI] 근영 담당. 인식된 식재료 카드 목록(#result-cards)을 렌더링한다.
+ * 각 카드에 그람 수 입력창(스테퍼 -10g/+10g 및 숫자 입력, 기본 100g)이 제공된다.
  * @param {Array} recognizedItems - appState.recognized 배열
  * @param {HTMLElement} container - id='result-cards' 요소
  */
@@ -15,9 +16,10 @@ function renderResultCards(recognizedItems, container) {
         return;
     }
 
-    recognizedItems.forEach((item) => {
+    recognizedItems.forEach((item, index) => {
         const card = document.createElement('div');
         card.className = 'result-card';
+        card.dataset.index = index;
 
         // 삭제 버튼: image_id가 있으면 removeIngredient()로 이미지/인식결과를 함께 정리하고,
         // 수동 추가 항목(image_id 없음)은 recognized 배열에서 직접 제거한다.
@@ -49,21 +51,113 @@ function renderResultCards(recognizedItems, container) {
             return;
         }
 
-        // [UPLOAD] 이름은 수정 불가, 읽기 전용 텍스트로만 표시한다 (삭제 후 다시 추가하는 방식으로만 변경 가능).
+        // [UI] 식재료 이름 표시
         const nameText = document.createElement('span');
         nameText.textContent = item.name;
         nameText.className = 'result-card-name';
 
+        // [UI] 신뢰도 표시
         const confidenceText = document.createElement('span');
         confidenceText.className = 'result-card-confidence';
         confidenceText.textContent = typeof item.confidence === 'number'
             ? `신뢰도 ${Math.round(item.confidence * 100)}%`
             : '';
 
+        // [UI] 근영 담당: 용량(g) 입력 래퍼 생성 (스테퍼 -10g, +10g 및 숫자 입력창)
+        const gramWrapper = document.createElement('div');
+        gramWrapper.className = 'gram-input-wrapper';
+
+        const currentGram = item.servingG || 100; // [UI] 기본값 100g 표시
+
+        gramWrapper.innerHTML = `
+            <div class="gram-stepper-group">
+                <button type="button" class="btn-gram-step btn-minus-10" data-index="${index}">-10g</button>
+                <input 
+                    type="number" 
+                    class="gram-number-input" 
+                    data-index="${index}"
+                    value="${currentGram}" 
+                    min="1" 
+                    max="2000" 
+                    step="1"
+                />
+                <span class="gram-unit">g</span>
+                <button type="button" class="btn-gram-step btn-plus-10" data-index="${index}">+10g</button>
+            </div>
+        `;
+
+        // 요소들을 카드에 조립
         card.appendChild(nameText);
         card.appendChild(confidenceText);
+        card.appendChild(gramWrapper); // [UI] 그람 수 입력창 추가
         card.appendChild(deleteBtn);
         container.appendChild(card);
+    });
+
+    // [UI] 근영 담당: 렌더링 후 이벤트 핸들러 연동 (스테퍼 버튼 및 숫자 입력)
+    attachGramInputEvents(container);
+}
+
+/**
+ * [UI] 근영 담당. result-cards 내 그람 수 입력창 및 스테퍼 버튼 이벤트 제어
+ * @param {HTMLElement} container - id='result-cards' 요소
+ */
+function attachGramInputEvents(container) {
+    if (!container) return;
+
+    // 1. [UI] 숫자 직접 입력 시 이벤트
+    container.querySelectorAll('.gram-number-input').forEach(input => {
+        input.addEventListener('change', (e) => {
+            const idx = Number(e.target.dataset.index);
+            const targetItem = appState.recognized[idx];
+            if (!targetItem) return;
+
+            const newGrams = parseInt(e.target.value, 10);
+
+            // [STATE] updateServingG 호출로 1~2000 범위 검증 및 전역 상태 반영
+            const success = updateServingG(targetItem.image_id, newGrams, idx);
+
+            if (success) {
+                e.target.value = targetItem.servingG;
+            } else {
+                // 범위 오류 시 원래 값으로 복원
+                e.target.value = targetItem.servingG || 100;
+            }
+        });
+    });
+
+    // 2. [UI] -10g 스테퍼 버튼 이벤트
+    container.querySelectorAll('.btn-minus-10').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const idx = Number(e.target.dataset.index);
+            const targetItem = appState.recognized[idx];
+            if (!targetItem) return;
+
+            const nextGrams = (targetItem.servingG || 100) - 10;
+            const success = updateServingG(targetItem.image_id, nextGrams, idx);
+
+            if (success) {
+                const inputEl = container.querySelector(`.gram-number-input[data-index="${idx}"]`);
+                if (inputEl) inputEl.value = targetItem.servingG;
+            }
+        });
+    });
+
+    // 3. [UI] +10g 스테퍼 버튼 이벤트
+    container.querySelectorAll('.btn-plus-10').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const idx = Number(e.target.dataset.index);
+            const targetItem = appState.recognized[idx];
+            if (!targetItem) return;
+
+            const nextGrams = (targetItem.servingG || 100) + 10;
+            const success = updateServingG(targetItem.image_id, nextGrams, idx);
+
+            if (success) {
+                const inputEl = container.querySelector(`.gram-number-input[data-index="${idx}"]`);
+                if (inputEl) inputEl.value = targetItem.servingG;
+            }
+        });
     });
 }
 
@@ -185,6 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 백엔드는 파일명 기준 image_id를 반환하므로, 프론트에서 생성한 image_id로
                 // 요청/응답 순서를 맞춰 매핑한다(image_service.predict_batch가 입력 순서를 그대로 유지함).
+                // [STATE] 근영 담당: 인식 결과 생성 시 servingG 기본값 100g 설정
                 appState.recognized = appState.images.map((image, index) => {
                     const result = results[index] || {};
                     return {
@@ -192,7 +287,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         name: result.name,
                         confidence: result.confidence,
                         candidates: result.candidates || [],
-                        edited: false
+                        edited: false,
+                        servingG: 100 // [STATE] 기본값 100g 설정
                     };
                 });
 
