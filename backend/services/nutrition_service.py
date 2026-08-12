@@ -13,7 +13,7 @@
 import csv
 import json
 import os
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 # ------------------------------------------------------------------
 # 경로 설정
@@ -43,6 +43,13 @@ _AGE_GROUP_RANGES = {
     "19-29": (19, 29),
     "30-49": (30, 49),
 }
+
+# [NUTRITION] docs/gram_feature_design.md 설계에 따른 serving_g 기본값/허용 범위
+# 기본값 100g: nutrition.csv가 100g 기준 데이터이므로, 값을 안 넣으면 기존 100g 가정과 동일하게 동작(하위 호환)
+# 허용 범위 1~2000g: 0 이하 값 방지 + 비현실적인 섭취량(수천g) 입력 방지
+DEFAULT_SERVING_G = 100
+MIN_SERVING_G = 1
+MAX_SERVING_G = 2000
 
 
 def _read_csv_rows(path: str) -> List[Dict[str, str]]:
@@ -151,14 +158,38 @@ def get_nutrition_for_ingredient(
     return nutrition_data.get(normalized_name)
 
 
+def _clamp_serving_g(value: object) -> float:
+    """
+    serving_g 값을 float로 변환하고 [MIN_SERVING_G, MAX_SERVING_G] 범위로 보정(clamp)한다.
+    변환 실패 시(None, 잘못된 타입 등) 기본값(DEFAULT_SERVING_G)을 사용한다.
+
+    라우터(Pydantic) 단에서 이미 range 검증을 하더라도, 서비스 함수가
+    단독으로 호출되는 경우(예: 다른 스크립트, 테스트)를 대비한 방어 로직이다.
+    """
+    try:
+        serving_g = float(value)
+    except (TypeError, ValueError):
+        return float(DEFAULT_SERVING_G)
+
+    return max(MIN_SERVING_G, min(MAX_SERVING_G, serving_g))
+
+
 def calculate_totals(
-    ingredients: List[str],
+    ingredients: List[Union[str, Dict[str, object]]],
     nutrition_data: Optional[Dict[str, Dict[str, float]]] = None,
     aliases: Optional[Dict[str, str]] = None,
 ) -> Dict[str, float]:
     """
-    재료명 리스트를 받아 각 재료를 100g씩 섭취했다고 가정하고 영양소 합계를 계산한다.
+    재료 목록을 받아 실제 섭취량(serving_g)에 비례한 영양소 합계를 계산한다.
+
+    ingredients의 각 원소는 두 가지 형태를 모두 지원한다.
+    - 문자열(str): 재료명만 넘기는 경우. serving_g는 기본값(100g)으로 간주한다.
+      (기존 호출부와의 하위 호환을 위해 유지)
+    - 딕셔너리(dict): {"name": 재료명, "serving_g": 실제 섭취량(g)} 형태.
+      serving_g가 없으면 기본값(100g)을 사용한다.
+
     nutrition.csv에서 찾을 수 없는 재료는 계산에서 제외한다(값 0 취급).
+    serving_g는 1~2000g 범위를 벗어나면 안쪽 값으로 보정(clamp)한다.
     """
     if nutrition_data is None:
         nutrition_data = load_nutrition_data()
@@ -167,15 +198,27 @@ def calculate_totals(
 
     totals = {key: 0.0 for key in NUTRIENT_KEYS}
 
-    for ingredient in ingredients:
+    for item in ingredients:
+        if isinstance(item, dict):
+            name = item.get("name", "")
+            serving_g = _clamp_serving_g(item.get("serving_g", DEFAULT_SERVING_G))
+        else:
+            # 문자열만 넘어온 경우: 기존 방식과 동일하게 100g으로 계산(하위 호환)
+            name = item
+            serving_g = float(DEFAULT_SERVING_G)
+
         nutrients = get_nutrition_for_ingredient(
-            ingredient, nutrition_data=nutrition_data, aliases=aliases
+            name, nutrition_data=nutrition_data, aliases=aliases
         )
         if nutrients is None:
             # 매칭 실패한 재료는 무시하고 계속 진행한다.
             continue
+
+        # nutrition.csv는 100g 기준값이므로, 실제 섭취량(serving_g)에 비례해서 환산한다.
+        ratio = serving_g / 100.0
         for key in NUTRIENT_KEYS:
-            totals[key] += nutrients.get(key, 0.0)
+            totals[key] += nutrients.get(key, 0.0) * ratio
+
     totals = {key: round(value, 1) for key, value in totals.items()}
 
     return totals
