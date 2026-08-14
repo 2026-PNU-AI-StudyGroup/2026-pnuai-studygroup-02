@@ -82,8 +82,7 @@ body {
     display: none;
 }
 
-/* 분석 화면: 왼쪽(프로필/인식결과)은 좁게, 오른쪽(업로드/영양분석)은 넓게 2x2 배치.
-   웹 화면은 가로 공간이 넉넉하므로 오른쪽 열(업로드/영양분석 카드)을 더 크게 잡는다. */
+/* 분석 화면: 왼쪽(프로필/인식결과)은 좁게, 오른쪽(업로드/영양분석)은 넓게 2x2 배치. */
 .dashboard-grid {
     display: grid;
     grid-template-columns: 1fr 2fr;
@@ -265,7 +264,7 @@ button {
     line-height: 1.5;
 }
 
-/* 이미지 미리보기: 섹션 가로 폭을 최대한 활용해 카드가 옆으로 나란히 배치되다가 줄바꿈된다 */
+/* 이미지 미리보기 */
 #preview-list {
     display: flex;
     flex-wrap: wrap;
@@ -303,7 +302,6 @@ button {
     color: var(--text-muted);
 }
 
-/* 전역 button 스타일(큰 버튼용)을 덮어써서 미리보기 카드 안의 삭제 버튼을 작게 만든다 */
 #preview-list .delete-btn {
     flex: none;
     width: auto;
@@ -321,50 +319,51 @@ button {
     color: #ffffff;
 }
 
-/* 식재료 인식 결과 카드: 세로 방향 flex로 만들어서, 옆(오른쪽 열)의 종합 영양 분석 카드가
-   결과가 채워지며 길어질 때 같은 행(grid row)의 높이도 함께 늘어나고, 그 늘어난 공간만큼
-   #result-cards 태그 목록도 자동으로 따라 커지도록 한다 (grid의 기본 stretch 정렬을 활용). */
+/* 8. 식재료 인식 결과 (그람 수 스테퍼 조절 및 모바일 터치 반응형 스타일) */
 #sec-result {
     display: flex;
     flex-direction: column;
 }
 
-/* 8. 인식 결과: 태그(chip) 형태로 표시. 기본 높이를 키우고, 그 이상 늘어나면 스크롤 처리 */
 #result-cards.tag-list {
     display: flex;
     flex-wrap: wrap;
     align-content: flex-start;
-    gap: 8px;
+    gap: 12px;
     flex: 1;
-    min-height: 320px;
+    min-height: 280px;
     max-height: 520px;
     overflow-y: auto;
     text-align: left;
     background: none;
-    padding: 4px 0;
+    padding: 8px 4px;
 }
 
 .result-card {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    background-color: var(--primary-soft);
-    border: 1px solid transparent;
-    border-radius: 999px;
-    padding: 6px 8px 6px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+    background-color: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 8px 12px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
 
 .result-card-name {
-    font-weight: 600;
-    font-size: 0.88rem;
-    color: var(--primary-dark);
-    padding: 2px 4px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-color);
 }
 
 .result-card-confidence {
     flex-shrink: 0;
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     color: var(--text-muted);
+    background-color: var(--bg-soft);
+    padding: 2px 6px;
+    border-radius: 4px;
 }
 
 .result-card-error {
@@ -374,31 +373,103 @@ button {
     padding: 4px 6px;
 }
 
-/* 전역 button 스타일(큰 버튼용)을 덮어써서 인식 결과 태그 안의 삭제 버튼을 작은 원형 ×로 만든다 */
-.result-card-delete-btn {
-    flex: none;
-    width: 20px;
-    height: 20px;
-    padding: 0;
-    font-size: 0;
-    line-height: 0;
-    background-color: transparent;
-    color: var(--primary-dark);
-    border: none;
-    border-radius: 50%;
+/* --- 그람(g) 수 조절 스테퍼 UI --- */
+.gram-input-wrapper {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
 }
 
-.result-card-delete-btn::before {
-    content: "×";
-    font-size: 14px;
+.gram-stepper-group {
+    display: flex;
+    align-items: center;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 2px;
+}
+
+/* -10g / +10g 버튼 (모바일 터치 영역 보장) */
+.btn-gram-step {
+    flex: none;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 6px;
+    font-size: 0.75rem;
     font-weight: 700;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+
+.btn-gram-step:hover {
+    background-color: var(--primary-soft);
+    color: var(--primary-dark);
+    border-color: var(--primary-color);
+}
+
+.btn-gram-step:active {
+    transform: scale(0.95);
+}
+
+/* 그람 수 숫자 입력창 */
+.gram-number-input {
+    width: 52px !important;
+    height: 36px;
+    padding: 0 4px !important;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+/* input[type="number"] 화살표 숨기기 */
+.gram-number-input::-webkit-outer-spin-button,
+.gram-number-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.gram-number-input[type=number] {
+    -moz-appearance: textfield;
+}
+
+.gram-unit {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-right: 4px;
+}
+
+/* 인식 결과 카드 삭제 버튼 */
+.result-card-delete-btn {
+    flex: none;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background-color: var(--danger-soft);
+    color: var(--danger-color);
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-left: 4px;
 }
 
 .result-card-delete-btn:hover {
-    background-color: rgba(0, 0, 0, 0.08);
+    background-color: var(--danger-color);
+    color: #ffffff;
 }
 
-/* 9. 영양소 요약: 막대그래프(좌) + 칼로리 강조 카드(우) 가로 배치 */
+/* 9. 영양소 요약 */
 .nutrition-summary-split {
     display: grid;
     grid-template-columns: 1.4fr 1fr;
@@ -435,7 +506,6 @@ button {
     transition: width 0.3s ease;
 }
 
-/* 칼로리 권장량 대비 퍼센트를 강조해서 보여주는 카드 */
 .nutrition-calorie-card {
     background: linear-gradient(135deg, var(--primary-soft), #eafff2);
     border-radius: var(--radius-md);
@@ -592,7 +662,6 @@ button {
     font-weight: 800;
 }
 
-/* [내 냉장고 재료로만 가능한 레시피] | [추천 재료가 들어간 레시피] 좌우 분할 배치 */
 #recipe-cards {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -616,14 +685,12 @@ button {
     margin-bottom: 18px;
 }
 
-/* 카드 그리드: 카드 하나가 좌(재료)/우(조리순서)로 나뉘어 넓어졌으므로 최소 폭을 넉넉히 잡는다 */
 .recipe-cards-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
     gap: 18px;
 }
 
-/* 카드 내부를 왼쪽(레시피명/재료) | 오른쪽(조리순서)로 가로 분할한다 */
 .recipe-card {
     background-color: #ffffff;
     border: 1px solid var(--border-color);
@@ -691,7 +758,6 @@ button {
     font-size: 0.84rem;
 }
 
-/* 조리 순서: 더 이상 접지 않고 카드 오른쪽에 항상 펼쳐서 보여준다 */
 .recipe-card-steps {
     flex: 1;
     min-width: 0;
@@ -723,18 +789,16 @@ button {
     padding: 24px 0;
 }
 
-/* recipes.js가 인라인 스타일과 함께 붙이는 "출처 없음" 안내 배너: 좌우 두 패널 전체 폭을 차지하게 한다 */
 .recipe-llm-notice {
     grid-column: 1 / -1;
 }
 
-/* 13. 반응형 */
+/* 13. 반응형 디자인 */
 @media (max-width: 900px) {
     .dashboard-grid {
         grid-template-columns: 1fr;
     }
 
-    /* 냉장고 재료만/추천 재료 두 패널을 좌우 분할 대신 위아래로 쌓는다 */
     #recipe-cards {
         grid-template-columns: 1fr;
     }
@@ -760,12 +824,20 @@ button {
         grid-template-columns: 1fr;
     }
 
-    /* 좁은 화면에서는 카드 내부 좌우 분할도 위아래로 쌓는다 */
     .recipe-card {
         flex-direction: column;
     }
 
     .deficient-card {
         width: 100%;
+    }
+
+    .result-card {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .gram-input-wrapper {
+        margin-left: 0;
     }
 }
