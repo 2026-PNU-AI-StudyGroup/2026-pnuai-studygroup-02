@@ -1,8 +1,19 @@
-# backend/routers/nutrition.py
+# [NUTRITION] 지은 담당. 한국어 주석 필수
 
-# [ROUTER] 지은 담당, main.py(현지)가 등록. 한국어 주석 필수
-# 식단 영양 분석 라우터. 재료별 섭취량(serving_g)을 반영해 영양성분을 계산하고,
-# 프로필(성별/나이) 기준 권장섭취량 대비 충족률과 부족 영양소 보완 재료를 반환한다.
+"""
+식단 영양 분석 라우터.
+
+POST /api/nutrition/analyze
+- 입력: {profile: {gender, age}, ingredients: [{ingredient_id, name, serving_g}]}
+- 출력: {per_ingredient, summary, deficient_supplements}
+
+serving_g는 생략 가능(기본값 100g)하며, 0 이하이거나 2000g을 초과하는 등
+유효 범위를 벗어난 값이 들어오면 서버에서 100g으로 자동 대체하고
+nutrition_service.resolve_serving_g()가 경고 로그를 남긴다.
+(참고: docs/gram_feature_design.md, docs/nutrition_analyze_schema_change_plan.md)
+"""
+
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -12,28 +23,54 @@ from backend.services import nutrition_service as ns
 router = APIRouter(prefix="/api/nutrition", tags=["nutrition"])
 
 
-# [ROUTER] 분석 요청에 포함되는 프로필 정보
 class ProfileInput(BaseModel):
+    """분석 요청에 포함되는 프로필 정보."""
+
     gender: str = Field(..., description="성별 ('남' 또는 '여')")
     age: int = Field(..., description="나이(세)")
 
 
-# [ROUTER] 분석 요청에 포함되는 재료 하나의 정보
 class IngredientInput(BaseModel):
+    """
+    분석 요청에 포함되는 재료 하나의 정보.
+
+    serving_g는 필수가 아니며, 생략 시 기본값 100g으로 처리된다.
+    0 이하이거나 2000g을 초과하는 값도 여기서 422로 거부하지 않고,
+    서비스 계층(nutrition_service.resolve_serving_g)에서 100g으로 대체 + 경고 로그로 처리한다.
+    """
+
     ingredient_id: str = Field(..., description="재료 식별용 ID (프론트/모델 쪽 고유값)")
     name: str = Field(..., description="재료명 (모델 출력명 또는 사용자가 입력한 이름)")
-    serving_g: float = Field(..., gt=0, description="실제 섭취량(g), 0보다 커야 함")
+    serving_g: Optional[float] = Field(
+        default=100,
+        description=(
+            "실제 섭취량(g). 생략 시 기본값 100g. "
+            "0 이하 또는 2000g 초과 값은 서버에서 100g으로 자동 대체됨(경고 로그 남김)."
+        ),
+    )
 
 
-# [ROUTER] POST /api/nutrition/analyze 요청 바디
 class AnalyzeRequest(BaseModel):
+    """POST /api/nutrition/analyze 요청 바디."""
+
     profile: ProfileInput
-    ingredients: list[IngredientInput]
+    ingredients: List[IngredientInput]
 
 
-@router.post("/analyze", summary="식단 영양 분석")
-def analyze_nutrition(payload: AnalyzeRequest) -> dict:
-    # 1. 프로필로 권장섭취량 조회 (profile.py의 검증 로직과 동일한 기준 사용)
+@router.post("/analyze")
+def analyze_nutrition(payload: AnalyzeRequest):
+    """
+    입력받은 재료 목록(각 재료의 실제 섭취량 serving_g 반영)의 영양성분을 계산하고,
+    프로필(성별/나이) 기준 권장섭취량 대비 충족률과 부족 영양소 보완 재료를 반환한다.
+
+    응답 형식:
+    {
+      "per_ingredient": [...],   # 재료별 계산된 영양정보 (serving_g 반영)
+      "summary": [...],          # 영양소별 총합/권장량/충족률/상태
+      "deficient_supplements": [...]  # 부족 영양소 보완 재료 후보
+    }
+    """
+    # 1. 프로필로 권장섭취량 조회
     recommendation = ns.get_recommendation(payload.profile.gender, payload.profile.age)
     if recommendation is None:
         raise HTTPException(
@@ -48,9 +85,12 @@ def analyze_nutrition(payload: AnalyzeRequest) -> dict:
     aliases = ns.load_aliases()
 
     per_ingredient = []
-    totals = {key: 0.0 for key in ns.NUTRIENT_KEYS}
 
     for item in payload.ingredients:
+        # serving_g 검증 + 기본값 대체는 서비스 계층 함수를 그대로 재사용한다.
+        # (범위를 벗어난 값이면 resolve_serving_g 내부에서 경고 로그가 남는다)
+        resolved_serving_g = ns.resolve_serving_g(item.name, item.serving_g)
+
         base_nutrients = ns.get_nutrition_for_ingredient(
             item.name, nutrition_data=nutrition_data, aliases=aliases
         )
@@ -62,38 +102,41 @@ def analyze_nutrition(payload: AnalyzeRequest) -> dict:
                     "ingredient_id": item.ingredient_id,
                     "name": item.name,
                     "matched": False,
-                    "serving_g": item.serving_g,
+                    "serving_g": resolved_serving_g,
                     "nutrients": {key: 0.0 for key in ns.NUTRIENT_KEYS},
                 }
             )
             continue
 
         # nutrition.csv는 100g 기준값이므로, 실제 섭취량(serving_g)에 비례해서 환산한다.
-        ratio = item.serving_g / 100.0
+        ratio = resolved_serving_g / 100.0
         scaled_nutrients = {
             key: round(base_nutrients.get(key, 0.0) * ratio, 1) for key in ns.NUTRIENT_KEYS
         }
-
-        for key in ns.NUTRIENT_KEYS:
-            totals[key] += scaled_nutrients[key]
 
         per_ingredient.append(
             {
                 "ingredient_id": item.ingredient_id,
                 "name": item.name,
                 "matched": True,
-                "serving_g": item.serving_g,
+                "serving_g": resolved_serving_g,
                 "nutrients": scaled_nutrients,
             }
         )
 
-    # 부동소수점 오차 정리
-    totals = {key: round(value, 1) for key, value in totals.items()}
+    # 2. 전체 섭취 총합 계산: nutrition_service.calculate_totals()를 그대로 재사용해서
+    #    라우터에 스케일링 로직을 중복 구현하지 않는다.
+    ingredient_dicts = [
+        {"name": item.name, "serving_g": item.serving_g} for item in payload.ingredients
+    ]
+    totals = ns.calculate_totals(
+        ingredient_dicts, nutrition_data=nutrition_data, aliases=aliases
+    )
 
-    # 2. 전체 섭취 총합 대비 권장섭취량 충족률 계산
+    # 3. 총합 대비 권장섭취량 충족률 계산 (기존 로직 그대로 유지)
     summary = ns.calculate_percentage(totals, recommendation)
 
-    # 3. 충족률이 "낮음"으로 판정된 영양소를 뽑아 보완 재료를 추천한다.
+    # 4. 충족률이 "낮음"으로 판정된 영양소를 뽑아 보완 재료를 추천한다. (기존 로직 그대로 유지)
     deficient_nutrients = [row["nutrient"] for row in summary if row["status"] == "낮음"]
     deficient_supplements = ns.get_deficient_ingredients(
         deficient_nutrients, nutrition_data=nutrition_data

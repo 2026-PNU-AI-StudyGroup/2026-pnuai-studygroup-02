@@ -12,8 +12,11 @@
 
 import csv
 import json
+import logging
 import os
 from typing import Dict, List, Optional, Union
+
+logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------
 # 경로 설정
@@ -45,7 +48,7 @@ _AGE_GROUP_RANGES = {
 }
 
 # [NUTRITION] docs/gram_feature_design.md 설계에 따른 serving_g 기본값/허용 범위
-# 기본값 100g: nutrition.csv가 100g 기준 데이터이므로, 값을 안 넣으면 기존 100g 가정과 동일하게 동작(하위 호환)
+# 기본값 100g: nutrition.csv가 100g 기준 데이터이므로, 값을 안 넣었을 때 "기존 100g 가정 동작"과 동일하게 하위 호환 유지
 # 허용 범위 1~2000g: 0 이하 값 방지 + 비현실적인 섭취량(수천g) 입력 방지
 DEFAULT_SERVING_G = 100
 MIN_SERVING_G = 1
@@ -158,20 +161,51 @@ def get_nutrition_for_ingredient(
     return nutrition_data.get(normalized_name)
 
 
-def _clamp_serving_g(value: object) -> float:
+def resolve_serving_g(ingredient_name: str, serving_g: object) -> float:
     """
-    serving_g 값을 float로 변환하고 [MIN_SERVING_G, MAX_SERVING_G] 범위로 보정(clamp)한다.
-    변환 실패 시(None, 잘못된 타입 등) 기본값(DEFAULT_SERVING_G)을 사용한다.
+    serving_g 입력값을 검증해 실제로 계산에 사용할 값을 반환한다.
 
-    라우터(Pydantic) 단에서 이미 range 검증을 하더라도, 서비스 함수가
-    단독으로 호출되는 경우(예: 다른 스크립트, 테스트)를 대비한 방어 로직이다.
+    아래 경우에는 기본값(DEFAULT_SERVING_G = 100g)으로 대체하고 경고 로그를 남긴다.
+    - 값이 없음(None)
+    - 숫자로 변환할 수 없음
+    - 0 이하
+    - MAX_SERVING_G(2000g) 초과
+
+    라우터(Pydantic) 쪽에서 이미 1차 검증을 하더라도, 이 함수가 서비스 계층에서
+    독립적으로 호출되는 경우(다른 스크립트, 테스트 등)를 대비한 방어 로직이다.
     """
-    try:
-        serving_g = float(value)
-    except (TypeError, ValueError):
+    if serving_g is None:
+        logger.warning(
+            "[NUTRITION] '%s' 재료의 serving_g가 없어 기본값 %dg으로 대체합니다.",
+            ingredient_name,
+            DEFAULT_SERVING_G,
+        )
         return float(DEFAULT_SERVING_G)
 
-    return max(MIN_SERVING_G, min(MAX_SERVING_G, serving_g))
+    try:
+        value = float(serving_g)
+    except (TypeError, ValueError):
+        logger.warning(
+            "[NUTRITION] '%s' 재료의 serving_g 값(%r)이 올바르지 않아 기본값 %dg으로 대체합니다.",
+            ingredient_name,
+            serving_g,
+            DEFAULT_SERVING_G,
+        )
+        return float(DEFAULT_SERVING_G)
+
+    if value <= 0 or value > MAX_SERVING_G:
+        logger.warning(
+            "[NUTRITION] '%s' 재료의 serving_g 값(%s)이 허용 범위(%d~%dg)를 벗어나 "
+            "기본값 %dg으로 대체합니다.",
+            ingredient_name,
+            value,
+            MIN_SERVING_G,
+            MAX_SERVING_G,
+            DEFAULT_SERVING_G,
+        )
+        return float(DEFAULT_SERVING_G)
+
+    return value
 
 
 def calculate_totals(
@@ -184,12 +218,13 @@ def calculate_totals(
 
     ingredients의 각 원소는 두 가지 형태를 모두 지원한다.
     - 문자열(str): 재료명만 넘기는 경우. serving_g는 기본값(100g)으로 간주한다.
-      (기존 호출부와의 하위 호환을 위해 유지)
+      (기존 호출부와의 하위 호환을 위해 유지, 이 경우는 경고 로그를 남기지 않는다)
     - 딕셔너리(dict): {"name": 재료명, "serving_g": 실제 섭취량(g)} 형태.
-      serving_g가 없으면 기본값(100g)을 사용한다.
+      serving_g가 없거나(0 이하 / 2000 초과 등) 잘못된 값이면 기본값(100g)으로
+      대체하고 resolve_serving_g()가 경고 로그를 남긴다.
 
+    각 재료의 100g 기준 영양값에 (serving_g / 100)을 곱해 실제 섭취량 기준으로 합산한다.
     nutrition.csv에서 찾을 수 없는 재료는 계산에서 제외한다(값 0 취급).
-    serving_g는 1~2000g 범위를 벗어나면 안쪽 값으로 보정(clamp)한다.
     """
     if nutrition_data is None:
         nutrition_data = load_nutrition_data()
@@ -201,7 +236,7 @@ def calculate_totals(
     for item in ingredients:
         if isinstance(item, dict):
             name = item.get("name", "")
-            serving_g = _clamp_serving_g(item.get("serving_g", DEFAULT_SERVING_G))
+            serving_g = resolve_serving_g(name, item.get("serving_g"))
         else:
             # 문자열만 넘어온 경우: 기존 방식과 동일하게 100g으로 계산(하위 호환)
             name = item
