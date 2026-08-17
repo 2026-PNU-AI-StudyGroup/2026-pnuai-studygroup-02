@@ -21,8 +21,7 @@ function renderResultCards(recognizedItems, container) {
         card.className = 'result-card';
         card.dataset.index = index;
 
-        // 삭제 버튼: image_id가 있으면 removeIngredient()로 이미지/인식결과를 함께 정리하고,
-        // 수동 추가 항목(image_id 없음)은 recognized 배열에서 직접 제거한다.
+        // 삭제 버튼: image_id가 있으면 removeIngredient()로 정리, 수동 추가 항목은 직접 제거
         const deleteBtn = document.createElement('button');
         deleteBtn.type = 'button';
         deleteBtn.className = 'result-card-delete-btn';
@@ -40,7 +39,7 @@ function renderResultCards(recognizedItems, container) {
         });
 
         if (!item.name) {
-            // [UPLOAD] 인식 실패 항목 (image_service.predict_single이 name=null, error=사유를 반환)
+            // 인식 실패 항목 처리
             const errorText = document.createElement('p');
             errorText.className = 'result-card-error';
             errorText.textContent = `⚠️ 인식 실패: ${item.error || '이미지를 분류하지 못했습니다.'}`;
@@ -51,23 +50,23 @@ function renderResultCards(recognizedItems, container) {
             return;
         }
 
-        // [UI] 식재료 이름 표시
+        // 식재료 이름 표시
         const nameText = document.createElement('span');
         nameText.textContent = item.name;
         nameText.className = 'result-card-name';
 
-        // [UI] 신뢰도 표시
+        // 신뢰도 표시
         const confidenceText = document.createElement('span');
         confidenceText.className = 'result-card-confidence';
         confidenceText.textContent = typeof item.confidence === 'number'
             ? `신뢰도 ${Math.round(item.confidence * 100)}%`
             : '';
 
-        // [UI] 근영 담당: 용량(g) 입력 래퍼 생성 (스테퍼 -10g, +10g 및 숫자 입력창)
+        // 용량(g) 입력 래퍼 생성
         const gramWrapper = document.createElement('div');
         gramWrapper.className = 'gram-input-wrapper';
 
-        const currentGram = item.servingG || 100; // [UI] 기본값 100g 표시
+        const currentGram = item.servingG || 100;
 
         gramWrapper.innerHTML = `
             <div class="gram-stepper-group">
@@ -80,21 +79,20 @@ function renderResultCards(recognizedItems, container) {
                     min="1" 
                     max="2000" 
                     step="1"
+                    inputmode="numeric"
                 />
                 <span class="gram-unit">g</span>
                 <button type="button" class="btn-gram-step btn-plus-10" data-index="${index}">+10g</button>
             </div>
         `;
 
-        // 요소들을 카드에 조립
         card.appendChild(nameText);
         card.appendChild(confidenceText);
-        card.appendChild(gramWrapper); // [UI] 그람 수 입력창 추가
+        card.appendChild(gramWrapper);
         card.appendChild(deleteBtn);
         container.appendChild(card);
     });
 
-    // [UI] 근영 담당: 렌더링 후 이벤트 핸들러 연동 (스테퍼 버튼 및 숫자 입력)
     attachGramInputEvents(container);
 }
 
@@ -105,7 +103,7 @@ function renderResultCards(recognizedItems, container) {
 function attachGramInputEvents(container) {
     if (!container) return;
 
-    // 1. [UI] 숫자 직접 입력 시 이벤트
+    // 1. 숫자 직접 입력 시 이벤트
     container.querySelectorAll('.gram-number-input').forEach(input => {
         input.addEventListener('change', (e) => {
             const idx = Number(e.target.dataset.index);
@@ -113,20 +111,17 @@ function attachGramInputEvents(container) {
             if (!targetItem) return;
 
             const newGrams = parseInt(e.target.value, 10);
-
-            // [STATE] updateServingG 호출로 1~2000 범위 검증 및 전역 상태 반영
             const success = updateServingG(targetItem.image_id, newGrams, idx);
 
             if (success) {
                 e.target.value = targetItem.servingG;
             } else {
-                // 범위 오류 시 원래 값으로 복원
                 e.target.value = targetItem.servingG || 100;
             }
         });
     });
 
-    // 2. [UI] -10g 스테퍼 버튼 이벤트
+    // 2. -10g 스테퍼 버튼 이벤트
     container.querySelectorAll('.btn-minus-10').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const idx = Number(e.target.dataset.index);
@@ -143,7 +138,7 @@ function attachGramInputEvents(container) {
         });
     });
 
-    // 3. [UI] +10g 스테퍼 버튼 이벤트
+    // 3. +10g 스테퍼 버튼 이벤트
     container.querySelectorAll('.btn-plus-10').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const idx = Number(e.target.dataset.index);
@@ -168,15 +163,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const recognizeBtn = document.getElementById('recognize-btn');
     const resultCardsContainer = document.getElementById('result-cards');
 
-    // 지원 확장자 정의 (jpg, jpeg, png)
+    // 모바일 환경을 고려해 capture 속성 동적 지원 (카메라 direct 연동)
+    if (fileInput) {
+        fileInput.setAttribute('accept', 'image/*');
+        fileInput.setAttribute('capture', 'environment'); // 스마트폰 후면 카메라 자동 호출
+    }
+
     const allowedExtensions = ['jpg', 'jpeg', 'png'];
 
-    /**
-     * 현재 상태의 이미지 목록을 읽어와 미리보기 UI 영역을 다시 그리는 렌더링 함수
-     * appState.images는 state.js의 addImage()가 만든 { image_id, file, previewUrl } 구조를 따른다.
-     */
     function renderPreviews() {
-        // 기존 렌더링 내용 초기화
         previewList.innerHTML = '';
 
         if (appState.images.length === 0) {
@@ -184,7 +179,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 이미지 배열을 순회하며 미리보기 카드 생성 (addImage()가 이미 만들어 둔 previewUrl 재사용)
         appState.images.forEach((image) => {
             const previewItem = document.createElement('div');
             previewItem.className = 'preview-item';
@@ -195,48 +189,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button type="button" data-image-id="${image.image_id}" class="delete-btn">삭제</button>
             `;
 
-            // 개별 삭제 버튼 이벤트: removeIngredient()가 images/recognized/nutrition/recipes를 함께 정리한다.
             const deleteBtn = previewItem.querySelector('.delete-btn');
             deleteBtn.addEventListener('click', () => {
                 removeIngredient(image.image_id);
-                renderPreviews(); // UI 갱신
+                renderPreviews();
             });
 
             previewList.appendChild(previewItem);
         });
     }
 
-    /**
-     * 파일 목록을 검증 후 상태에 추가한다. 클릭 업로드(change)와 드래그앤드롭(drop) 양쪽에서 공용으로 쓴다.
-     * @param {FileList|File[]} fileList
-     */
     function handleFiles(fileList) {
         Array.from(fileList).forEach(file => {
             const ext = file.name.split('.').pop().toLowerCase();
 
-            // 확장자 검증
             if (!allowedExtensions.includes(ext)) {
                 alert(`지원하지 않는 파일 형식입니다 (${file.name}). jpg, jpeg, png 파일만 업로드 가능합니다.`);
                 return;
             }
 
-            // state.js의 addImage()로 상태에 추가 (image_id, previewUrl을 함께 생성)
             addImage(file);
         });
 
         renderPreviews();
     }
 
-    // 클릭해서 파일 선택하는 경우
     if (fileInput) {
         fileInput.addEventListener('change', (event) => {
             handleFiles(event.target.files);
-            // 입력값 초기화 (같은 파일 다시 선택 가능하도록)
             fileInput.value = '';
         });
     }
 
-    // 드래그앤드롭으로 파일을 놓는 경우 (같은 handleFiles()를 재사용)
     if (dropzone) {
         ['dragenter', 'dragover'].forEach(eventName => {
             dropzone.addEventListener(eventName, (event) => {
@@ -260,7 +244,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 식재료 인식하기 버튼 클릭 이벤트 (API 연동)
     if (recognizeBtn) {
         recognizeBtn.addEventListener('click', async () => {
             if (appState.images.length === 0) {
@@ -272,14 +255,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 recognizeBtn.disabled = true;
                 recognizeBtn.textContent = '인식 중...';
 
-                // api.js에 정의된 predictIngredients 호출 (File 객체 배열만 전달)
                 const files = appState.images.map(image => image.file);
                 const response = await predictIngredients(files);
                 const results = response.results || [];
 
-                // 백엔드는 파일명 기준 image_id를 반환하므로, 프론트에서 생성한 image_id로
-                // 요청/응답 순서를 맞춰 매핑한다(image_service.predict_batch가 입력 순서를 그대로 유지함).
-                // [STATE] 근영 담당: 인식 결과 생성 시 servingG 기본값 100g 설정
                 appState.recognized = appState.images.map((image, index) => {
                     const result = results[index] || {};
                     return {
@@ -288,24 +267,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         confidence: result.confidence,
                         candidates: result.candidates || [],
                         edited: false,
-                        servingG: 100 // [STATE] 기본값 100g 설정
+                        servingG: 100
                     };
                 });
 
-                // 인식 결과가 반영됐으므로 분석 가능 여부(analyze-btn 활성화)를 다시 계산한다.
                 if (typeof canAnalyze === 'function') {
                     canAnalyze();
                 }
 
-                // 결과 카드 렌더링 함수 호출
                 if (typeof renderResultCards === 'function') {
                     renderResultCards(appState.recognized, resultCardsContainer);
                 }
 
             } catch (error) {
                 console.error('인식 실패:', error);
-
-                // app.js에 정의된 공통 전역 에러 배너를 호출하여 공유
                 if (typeof app !== 'undefined' && typeof app.showCommonError === 'function') {
                     app.showCommonError(error.message || '식재료 인식 처리 중 오류가 발생했습니다.');
                 }
