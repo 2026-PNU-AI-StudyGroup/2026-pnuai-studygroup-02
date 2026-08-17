@@ -1,5 +1,5 @@
-/* [CSS] SaaS 스타일(Toss/오늘의집/Notion 톤) 화이트 배경 + 연녹색 포인트 테마 */
-/* [CSS-REDESIGN] 디자인(레이아웃/색/여백)만 변경. 기능/데이터/상태 로직은 건드리지 않음. */
+/* [CSS] 근영 담당. SaaS 스타일(Toss/오늘의집/Notion 톤) 화이트 배경 + 연녹색 포인트 테마 */
+/* [CSS] 근영 담당. 카메라 연동, 모바일 반응형(768px/480px 이하) 및 터치 타겟(최소 44px) 최적화 */
 
 /* 1. 글로벌 스타일 및 테마 변수 선언 */
 :root {
@@ -392,10 +392,10 @@ button {
 /* -10g / +10g 버튼 (모바일 터치 영역 보장) */
 .btn-gram-step {
     flex: none;
-    min-width: 36px;
-    height: 36px;
-    padding: 0 6px;
-    font-size: 0.75rem;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 8px;
+    font-size: 0.8rem;
     font-weight: 700;
     background-color: var(--bg-color);
     color: var(--text-color);
@@ -420,12 +420,12 @@ button {
 
 /* 그람 수 숫자 입력창 */
 .gram-number-input {
-    width: 52px !important;
-    height: 36px;
+    width: 56px !important;
+    height: 40px;
     padding: 0 4px !important;
     text-align: center;
     font-weight: 700;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     border: none !important;
     background: transparent !important;
     box-shadow: none !important;
@@ -451,10 +451,10 @@ button {
 /* 인식 결과 카드 삭제 버튼 */
 .result-card-delete-btn {
     flex: none;
-    min-width: 32px;
-    height: 32px;
-    padding: 0 8px;
-    font-size: 0.75rem;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 10px;
+    font-size: 0.8rem;
     font-weight: 600;
     background-color: var(--danger-soft);
     color: var(--danger-color);
@@ -462,6 +462,9 @@ button {
     border-radius: 6px;
     cursor: pointer;
     margin-left: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .result-card-delete-btn:hover {
@@ -575,7 +578,7 @@ button {
 .pantry-checklist label {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     font-weight: 500;
     font-size: 0.88rem;
     background-color: var(--card-bg);
@@ -583,9 +586,12 @@ button {
     border-radius: 999px;
     padding: 8px 14px;
     cursor: pointer;
+    min-height: 44px;
 }
 
 .pantry-checklist input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
     accent-color: var(--primary-color);
 }
 
@@ -793,7 +799,9 @@ button {
     grid-column: 1 / -1;
 }
 
-/* 13. 반응형 디자인 */
+/* 13. 반응형 디자인 및 미디어쿼리 (태블릿 / 모바일 / 소형 디바이스) */
+
+/* [CSS] 근영 담당. 900px 이하 모바일/태블릿 대형 레이아웃 대응 */
 @media (max-width: 900px) {
     .dashboard-grid {
         grid-template-columns: 1fr;
@@ -815,9 +823,14 @@ button {
     }
 }
 
-@media (max-width: 560px) {
+/* [CSS] 근영 담당. 768px 이하 태블릿 및 표준 모바일 대응 (세로 쌓임 레이아웃 확장) */
+@media (max-width: 768px) {
     .container {
-        padding: 20px 16px 100px;
+        padding: 24px 18px 100px;
+    }
+
+    .app-card {
+        padding: 20px;
     }
 
     .recipe-cards-grid {
@@ -826,6 +839,21 @@ button {
 
     .recipe-card {
         flex-direction: column;
+    }
+
+    .btn-group {
+        flex-direction: column;
+    }
+
+    button {
+        min-height: 44px; /* 터치 타겟 최소 height 보장 */
+    }
+}
+
+/* [CSS] 근영 담당. 560px 이하 중소형 모바일 */
+@media (max-width: 560px) {
+    .container {
+        padding: 20px 16px 100px;
     }
 
     .deficient-card {
@@ -839,5 +867,64 @@ button {
 
     .gram-input-wrapper {
         margin-left: 0;
+    }
+}
+
+/* [CSS] 근영 담당. 480px 이하 소형 모바일 대응 & 터치 타겟 최소 44px 확보 */
+@media (max-width: 480px) {
+    .container {
+        padding: 16px 12px 80px;
+    }
+
+    /* 주요 버튼 및 입력 폼 터치 영역 최소 44px 확충 */
+    button,
+    input[type="text"],
+    input[type="number"],
+    select {
+        min-height: 44px;
+        font-size: 0.95rem;
+    }
+
+    .btn-huge {
+        min-height: 52px;
+        font-size: 1.05rem;
+    }
+
+    /* 식재료 결과 카드 터치 대응 */
+    .result-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .gram-input-wrapper {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .gram-stepper-group {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    /* 그람 수 스테퍼 버튼 및 입력창 터치 타겟 최소 44px 보장 */
+    .btn-gram-step {
+        min-width: 44px;
+        height: 44px;
+        font-size: 0.85rem;
+    }
+
+    .gram-number-input {
+        width: 60px !important;
+        height: 44px;
+        font-size: 1rem;
+    }
+
+    .result-card-delete-btn {
+        min-width: 44px;
+        height: 44px;
+        font-size: 0.85rem;
+        align-self: flex-end;
     }
 }

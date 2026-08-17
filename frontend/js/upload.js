@@ -1,4 +1,5 @@
 // [UPLOAD] 근영 담당. 이미지 선택, 확장자 검증, 개별 삭제 및 미리보기/결과카드 렌더링
+// 모바일 환경에서는 후면 카메라가 자동 실행되고, 데스크톱에서는 기존처럼 파일 선택 창으로 동작합니다.
 
 /**
  * [UI] 근영 담당. 인식된 식재료 카드 목록(#result-cards)을 렌더링한다.
@@ -163,10 +164,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const recognizeBtn = document.getElementById('recognize-btn');
     const resultCardsContainer = document.getElementById('result-cards');
 
-    // 모바일 환경을 고려해 capture 속성 동적 지원 (카메라 direct 연동)
+    // [UPLOAD] 근영 담당. 모바일 환경을 고려해 capture="environment" 속성 동적 지원
+    // 데스크톱에서는 파일 선택창, 모바일에서는 바로 후면 카메라가 실행됩니다.
     if (fileInput) {
         fileInput.setAttribute('accept', 'image/*');
-        fileInput.setAttribute('capture', 'environment'); // 스마트폰 후면 카메라 자동 호출
+        fileInput.setAttribute('capture', 'environment'); 
     }
 
     const allowedExtensions = ['jpg', 'jpeg', 'png'];
