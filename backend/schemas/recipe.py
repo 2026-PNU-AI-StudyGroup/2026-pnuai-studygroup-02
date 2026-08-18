@@ -1,8 +1,17 @@
 # backend/schemas/recipe.py
 
-from typing import Literal, TypeAlias
+# [RAG-RECIPE] 시은 최종 책임. 한국어 주석 필수
 
-from pydantic import BaseModel, Field, field_validator
+from typing import (
+    Literal,
+    TypeAlias,
+)
+
+from pydantic import (
+    BaseModel,
+    Field,
+    field_validator,
+)
 
 
 # [SCHEMA] 레시피 생성 모드
@@ -17,13 +26,23 @@ class RecipeRequest(BaseModel):
     ingredients: list[str] = Field(
         min_length=1,
         description="사용자가 보유한 식재료 목록",
-        examples=[["감자", "당근", "양배추"]],
+        examples=[
+            [
+                "감자",
+                "당근",
+                "양배추",
+            ]
+        ],
     )
 
     deficient_nutrients: list[str] = Field(
         default_factory=list,
         description="사용자에게 부족한 영양소 목록",
-        examples=[["단백질"]],
+        examples=[
+            [
+                "단백질",
+            ]
+        ],
     )
 
     mode: RecipeMode = Field(
@@ -42,19 +61,30 @@ class RecipeRequest(BaseModel):
         cls,
         value: object,
     ) -> object:
-        if not isinstance(value, list):
+        if not isinstance(
+            value,
+            list,
+        ):
             return value
 
         result: list[str] = []
 
         for item in value:
-            if not isinstance(item, str):
+            if not isinstance(
+                item,
+                str,
+            ):
                 continue
 
             cleaned = item.strip()
 
-            if cleaned and cleaned not in result:
-                result.append(cleaned)
+            if (
+                cleaned
+                and cleaned not in result
+            ):
+                result.append(
+                    cleaned
+                )
 
         return result
 
@@ -88,7 +118,11 @@ class Recipe(BaseModel):
 
     sources: list[str] = Field(
         default_factory=list,
-        description="RAG를 사용하지 않으므로 항상 빈 배열",
+        description=(
+            "RAG 추천 시 실제 참고한 "
+            "레시피명과 출처 정보. "
+            "직접 생성 fallback일 경우 빈 배열"
+        ),
     )
 
     # [SCHEMA] 문자열 필드의 앞뒤 공백을 제거한다.
@@ -102,7 +136,10 @@ class Recipe(BaseModel):
         cls,
         value: object,
     ) -> object:
-        if isinstance(value, str):
+        if isinstance(
+            value,
+            str,
+        ):
             return value.strip()
 
         return value
@@ -118,19 +155,30 @@ class Recipe(BaseModel):
         cls,
         value: object,
     ) -> object:
-        if not isinstance(value, list):
+        if not isinstance(
+            value,
+            list,
+        ):
             return value
 
         result: list[str] = []
 
         for item in value:
-            if not isinstance(item, str):
+            if not isinstance(
+                item,
+                str,
+            ):
                 continue
 
             cleaned = item.strip()
 
-            if cleaned and cleaned not in result:
-                result.append(cleaned)
+            if (
+                cleaned
+                and cleaned not in result
+            ):
+                result.append(
+                    cleaned
+                )
 
         return result
 
@@ -144,26 +192,61 @@ class Recipe(BaseModel):
         cls,
         value: object,
     ) -> object:
-        if not isinstance(value, list):
+        if not isinstance(
+            value,
+            list,
+        ):
             return value
 
         return [
             item.strip()
             for item in value
-            if isinstance(item, str) and item.strip()
+            if (
+                isinstance(
+                    item,
+                    str,
+                )
+                and item.strip()
+            )
         ]
 
-    # [SCHEMA] sources는 항상 빈 배열로 만든다.
+    # [RAG-RECIPE] sources의 빈 문자열과 중복을 제거한다.
+    # 직접 생성 fallback의 빈 배열도 그대로 허용한다.
     @field_validator(
         "sources",
         mode="before",
     )
     @classmethod
-    def force_empty_sources(
+    def clean_sources(
         cls,
         value: object,
-    ) -> list[str]:
-        return []
+    ) -> object:
+        if not isinstance(
+            value,
+            list,
+        ):
+            return value
+
+        result: list[str] = []
+
+        for item in value:
+            if not isinstance(
+                item,
+                str,
+            ):
+                continue
+
+            cleaned = item.strip()
+
+            if (
+                cleaned
+                and cleaned not in result
+            ):
+                result.append(
+                    cleaned
+                )
+
+        return result
 
 
 # [SCHEMA] 레시피 생성 성공 응답 데이터
@@ -182,4 +265,9 @@ class RecipeResponse(BaseModel):
 class CommonError(BaseModel):
     code: str
     message: str
-    details: dict[str, object] | list[object] | str | None = None
+    details: (
+        dict[str, object]
+        | list[object]
+        | str
+        | None
+    ) = None

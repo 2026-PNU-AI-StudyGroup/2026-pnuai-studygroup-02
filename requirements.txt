@@ -10,3 +10,5 @@ pillow
 numpy
 httpx
 pytest
+sentence-transformers
+faiss-cpu
