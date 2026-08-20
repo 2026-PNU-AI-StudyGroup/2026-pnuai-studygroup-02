@@ -25,23 +25,23 @@ TOP_K = 3
 # [IMAGE] PIL이 인식하는 포맷 이름 기준으로 jpg/jpeg/png만 허용한다.
 ALLOWED_FORMATS: set[str] = {"JPEG", "PNG"}
 
-# [IMAGE] 학습된 모델과 클래스명 파일이 저장되는 경로
+# [IMAGE] 학습된 모델과 클래스명 파일이 저장되는 경로 (20종 재학습 모델 v2)
 ARTIFACT_DIR = (
     Path(__file__).resolve().parent.parent.parent
     / "model"
     / "artifacts"
 )
-MODEL_PATH = ARTIFACT_DIR / "ingredient_model.keras"
-CLASS_NAMES_PATH = ARTIFACT_DIR / "class_names.json"
+MODEL_PATH = ARTIFACT_DIR / "ingredient_model_v2.keras"
+CLASS_NAMES_PATH = ARTIFACT_DIR / "class_names_v2.json"
 
 # [IMAGE] MOCK_MODE=true면 모델을 로드하지 않고 고정 결과를 반환한다. (backend/config.py의 공용 설정을 사용)
 MOCK_MODE = settings.MOCK_MODE
 
-# [IMAGE] MOCK_MODE에서 사용할 고정 결과
+# [IMAGE] MOCK_MODE에서 사용할 고정 결과 (20종 클래스 기준 후보로 갱신)
 MOCK_CANDIDATES: list[dict[str, Any]] = [
     {"name": "potato", "confidence": 0.95},
-    {"name": "carrot", "confidence": 0.03},
-    {"name": "cabbage", "confidence": 0.02},
+    {"name": "kimchi", "confidence": 0.03},
+    {"name": "cucumber", "confidence": 0.02},
 ]
 
 # [IMAGE] 모델과 클래스명을 1회만 로딩해 모듈 전역에 캐싱한다.
@@ -49,7 +49,7 @@ _model: Any = None
 _class_names: list[str] | None = None
 
 
-# [IMAGE] 저장된 .keras 모델과 class_names.json을 1회만 로딩해 캐싱한다.
+# [IMAGE] 저장된 .keras 모델과 class_names_v2.json을 1회만 로딩해 캐싱한다.
 def load_model() -> tuple[Any, list[str]]:
     global _model, _class_names
 
