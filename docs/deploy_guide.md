@@ -5,7 +5,7 @@
 
 ## 0. 사전 준비
 
-- GitHub 저장소: `2026-PNU-AI-StudyGroup/2026-pnuai-studygroup-02` (이미 연결되어 있음)
+- GitHub 저장소
 - 배포 브랜치: `main` (PR 머지 후 배포)
 - 루트에 `Dockerfile`, `.dockerignore` 존재 확인
 - `model/artifacts/*.keras` 모델 파일이 git에 커밋되어 있어야 함
@@ -22,26 +22,36 @@ git ls-files model/artifacts
   - `FOODSAFETY_RECIPE_API_KEY`
   - `CORS_ORIGINS` (배포 후 실제 프론트엔드 접근 origin으로 설정. 프론트를 같은 서비스에서 정적으로 서빙하므로
     보통 Render가 부여하는 서비스 URL 자신을 넣거나, 별도 프론트 도메인이 있다면 그 값을 넣는다)
-  - `MOCK_MODE` (기본 `false`)
+  - `MOCK_MODE`
 
 > 이 값들은 절대 코드/커밋/`.env` 파일로 저장소에 올리지 않는다. Render 대시보드의 Environment
 > 설정(시크릿)에만 등록한다.
 
 ## 1. Render 서비스 생성
 
-1. https://dashboard.render.com 접속 후 로그인 (GitHub 계정 연동)
+저장소가 GitHub organization(`2026-PNU-AI-StudyGroup`) 소속이라, 일반 멤버 계정으로는 Render GitHub
+App의 조직 저장소 접근 승인을 받을 수 없다(조직 Owner만 승인 가능). 이 문제를 피하기 위해
+**Public Git Repository** 방식으로 연결했다. 저장소가 public이므로 GitHub 계정 연동 없이 git URL만으로
+클론·빌드가 가능하다.
+
+1. render 로그인
 2. **New +** → **Web Service** 선택
-3. **Build and deploy from a Git repository** 선택 후 해당 GitHub 저장소 연결
-   - 최초 연결 시 Render GitHub App 권한 승인 필요 (저장소 접근 허용)
+3. Source 선택 화면에서 GitHub/GitLab/Bitbucket이 아닌 **Public Git Repository** 탭 선택 후
+   저장소 URL 입력
 4. 배포 설정 입력
    - **Name**: `ingredient-project` (원하는 이름)
    - **Region**: Singapore 등 가까운 리전
-   - **Branch**: `main`
-   - **Root Directory**: 비워둠 (저장소 루트에 Dockerfile 위치)
-   - **Runtime**: `Docker` (Render가 루트의 `Dockerfile`을 자동 인식)
-   - **Instance Type**: Free (테스트용) 또는 최소 유료 플랜
+   - **Branch**: `dev/C` (검증 단계이므로 작업 브랜치를 직접 지정. main 브랜치로 승격은 팀 리뷰 후 별도 진행)
+   - **Language**: `Docker` (자동 인식이 안 될 수 있어 직접 선택 필요. 선택 시 Build/Start Command
+     입력란이 사라지고 저장소 루트의 `Dockerfile`을 그대로 사용)
+   - **Instance Type**: Free (테스트용)
      - 모델 로딩(TensorFlow + SentenceTransformer) 메모리 사용량이 있으므로 Free 플랜에서 OOM이
        발생하면 최소 유료 플랜(예: Starter)으로 올린다.
+
+> **주의(Public Git Repository 방식의 한계)**: GitHub App으로 정식 연동한 게 아니라 git 클론 방식이라
+> **push해도 자동 재배포(Auto-Deploy)가 되지 않는다.** 코드를 수정한 뒤에는 Render 대시보드에서
+> **Manual Deploy → Deploy latest commit**을 직접 눌러 재배포해야 한다. 이후 조직 관리자에게 Render
+> GitHub App 승인을 받으면 정식 GitHub 연동으로 전환해 자동 배포를 활성화할 수 있다.
 
 ## 2. 환경 변수(시크릿) 등록
 
@@ -81,12 +91,39 @@ Render 서비스 생성 화면(또는 생성 후 **Environment** 탭)에서 **En
 
 ## 5. 이후 배포(재배포)
 
-- `main` 브랜치에 새 커밋이 푸시되면 Render가 자동으로 재빌드·재배포한다 (Auto-Deploy 기본 켜짐).
-- 모델을 재학습해 `.keras` 파일을 교체하는 경우, 새 파일을 커밋 → `main` 푸시 → Render 자동 재배포로 반영된다.
-- 수동 재배포가 필요하면 대시보드에서 **Manual Deploy → Deploy latest commit** 사용.
+- 현재는 Public Git Repository 방식이라 **자동 재배포가 되지 않는다.** 코드를 수정해 push한 뒤에는
+  Render 대시보드에서 **Manual Deploy → Deploy latest commit**을 매번 직접 눌러야 최신 코드가 반영된다.
+- 모델을 재학습해 `.keras` 파일을 교체하는 경우도 동일하게, 커밋·push 후 Manual Deploy로 반영한다.
+- 이후 main으로 승격하고 조직 관리자에게 Render GitHub App 승인을 받으면, 정식 GitHub 연동 방식으로
+  바꿔 push 시 자동 재배포되도록 전환할 수 있다.
 
 ## 참고: Free 플랜 유의사항
 
 - Render Free 웹 서비스는 일정 시간 요청이 없으면 슬립되며, 슬립 이후 첫 요청 시 콜드 스타트로
   응답이 수십 초 이상 걸릴 수 있다 (TensorFlow/임베딩 모델 로딩 포함 시 더 오래 걸릴 수 있음).
 - 데모/시연 전에는 미리 한 번 접속해 깨워두는 것을 권장한다.
+
+## 6. 실제 배포 시도 결과 (2026-08-21)
+
+위 절차대로 Render Web Service(`ingredient-project`, Free 플랜, Public Git Repository, `dev/C`
+브랜치)를 실제로 1회 배포해 다음을 확인했다.
+
+- **정상 확인됨**: 빌드 성공, 프론트엔드 정적 파일 서빙(`/`), 헬스체크(`/api/health` → `{"status":"ok"}`)
+- **문제 발생**: 이미지 분류 API(`/api/ingredients/predict`)를 호출하면 TensorFlow 임포트 + `.keras`
+  모델 로딩 + 추론 과정에서 메모리 사용량이 Free 플랜 한도(512MB)를 초과해 인스턴스가 강제 재시작됨
+  (Render로부터 "exceeded its memory limit" 알림 수신). 이 상태에서 요청은 `502 Bad Gateway`로 실패한다.
+
+**결정: 이미지 분류가 이 프로젝트의 핵심 기능이므로, 해당 기능이 배포 환경에서 불안정하게 동작하는
+상태로 배포 링크를 대표 제출물로 사용하지 않기로 함.** 대신,
+
+- Render 서비스는 정지(suspend)해 불필요한 재시작/알림을 막는다.
+- 이미지 분류를 포함한 전체 기능은 로컬 실행 화면으로 데모 영상을 촬영해 대체한다.
+- Dockerfile, `.dockerignore`, 배포 절차 자체는 그대로 저장소에 남겨, 추후 아래 개선을 적용한 뒤
+  재배포를 시도할 수 있도록 한다.
+
+### 향후 재배포 시 검토할 개선 방향
+
+- `.keras` 모델을 TFLite 등 경량 포맷으로 변환해 추론 시 메모리 사용량을 크게 줄인다.
+- Render 유료 플랜(예: Standard, RAM 2GB 이상)으로 인스턴스를 올려 TensorFlow 풀 모델을 그대로 구동한다.
+- 이미지 분류만 별도의 경량 추론 서버(예: ONNX Runtime, TFLite 런타임)로 분리해 메인 API 서버의
+  메모리 부담을 줄인다.
