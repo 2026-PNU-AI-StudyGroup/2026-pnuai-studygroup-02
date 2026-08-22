@@ -11,6 +11,8 @@ tests
 model/notebooks
 model/evaluation
 model/experiments
+model/convert_to_tflite.py
+model/artifacts/*.keras
 docs
 README.md
 README1.md

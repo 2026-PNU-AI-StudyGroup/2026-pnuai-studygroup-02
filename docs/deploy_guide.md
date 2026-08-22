@@ -8,12 +8,13 @@
 - GitHub 저장소
 - 배포 브랜치: `main` (PR 머지 후 배포)
 - 루트에 `Dockerfile`, `.dockerignore` 존재 확인
-- `model/artifacts/*.keras` 모델 파일이 git에 커밋되어 있어야 함
-  (`.gitignore`에서 `model/artifacts/*.keras` 제외 규칙을 제거했으므로, 아래처럼 커밋되어 있는지 확인)
+- `model/artifacts/ingredient_model_v2.tflite` 파일이 git에 커밋되어 있어야 함
+  (`.keras` 원본은 git에는 남겨두되 `.dockerignore`로 배포 이미지에서는 제외한다. 자세한 내용은
+  [7. TFLite 경량화 적용](#7-tflite-경량화-적용-2026-08-22) 참고)
 
 ```bash
 git ls-files model/artifacts
-# ingredient_model.keras, ingredient_model_v2.keras, class_names*.json 등이 보여야 함
+# ingredient_model_v2.tflite, class_names*.json 등이 보여야 함
 ```
 
 - 배포에 필요한 API 키 값을 미리 확보해둔다 (Render 시크릿에 등록할 값들, `.env.example` 참고)
@@ -127,3 +128,24 @@ Render 서비스 생성 화면(또는 생성 후 **Environment** 탭)에서 **En
 - Render 유료 플랜(예: Standard, RAM 2GB 이상)으로 인스턴스를 올려 TensorFlow 풀 모델을 그대로 구동한다.
 - 이미지 분류만 별도의 경량 추론 서버(예: ONNX Runtime, TFLite 런타임)로 분리해 메인 API 서버의
   메모리 부담을 줄인다.
+
+## 7. TFLite 경량화 적용 (2026-08-22)
+
+위 개선 방향 중 첫 번째(TFLite 변환)를 적용했다.
+
+- `model/convert_to_tflite.py`: `ingredient_model_v2.keras` → `ingredient_model_v2.tflite` (float16
+  양자화) 변환 스크립트. 로컬에서 1회 실행해 결과물(`model/artifacts/ingredient_model_v2.tflite`,
+  약 7.8MB, 원본 대비 약 절반)을 커밋한다.
+- `backend/services/image_service.py`: `tf.keras.models.load_model` + `model.predict` 대신
+  `ai_edge_litert.interpreter.Interpreter`로 `.tflite` 모델을 로딩·추론하도록 변경.
+- `requirements.txt`: `tensorflow` → `ai-edge-litert`로 교체 (배포 이미지에서 무거운 TensorFlow 풀
+  패키지를 설치하지 않아 메모리·빌드 시간 모두 절감).
+- `Dockerfile`, `.dockerignore`: `.keras` 원본 모델 파일은 이미지에 포함하지 않도록 제외
+  (`model/artifacts/*.keras`), 변환 스크립트도 배포 이미지에서 제외.
+- 검증: 샘플 이미지(`service_img/t1~t3.png`) 기준 변환 전후 top-1 클래스 100% 일치, 클래스별
+  confidence 차이는 0.001 미만으로 정확도 손실 무시할 수준.
+- `tests/test_image_service.py`의 `load_model` 반환 시그니처를 `(interpreter, input_index,
+  output_index, class_names)`로 갱신.
+
+재배포 시 Render 인스턴스의 실제 메모리 사용량(Metrics 탭)을 확인해 512MB 이내로 들어오는지
+재검증이 필요하다.
