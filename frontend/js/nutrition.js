@@ -154,7 +154,8 @@ const GENDER_TO_BACKEND = {
     female: '여'
 };
 
-// [NUTRITION] serving_g(실제 섭취량) 입력 UI가 아직 없으므로 nutrition.csv 기준량인 100g을 기본값으로 사용한다.
+// [NUTRITION] servingG를 명시적으로 설정하지 않은 항목(예: 수동 추가 재료)을 위한 기본값.
+// 실제 그람 수는 upload.js/state.js의 그람 입력 UI가 appState.recognized[i].servingG에 반영한다.
 const DEFAULT_SERVING_G = 100;
 
 /**
@@ -188,7 +189,7 @@ async function handleNutritionAnalysis() {
             ingredients: validItems.map((item, index) => ({
                 ingredient_id: item.image_id || `manual_${index}`,
                 name: item.name,
-                serving_g: DEFAULT_SERVING_G
+                serving_g: item.servingG || DEFAULT_SERVING_G
             }))
         };
 
