@@ -12,7 +12,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# faiss-cpu, tensorflow가 런타임에 필요로 하는 OpenMP 공유 라이브러리
+# faiss-cpu가 런타임에 필요로 하는 OpenMP 공유 라이브러리
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
@@ -25,7 +25,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # (런타임 콜드 스타트 때 HuggingFace 네트워크 호출 없이 바로 로딩되도록 하기 위함)
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')"
 
-# 애플리케이션 코드와 데이터 (model/artifacts의 .keras 모델 포함)
+# 애플리케이션 코드와 데이터 (model/artifacts의 .tflite 모델 포함)
 COPY backend ./backend
 COPY frontend ./frontend
 COPY model ./model

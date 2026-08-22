@@ -76,7 +76,7 @@ def test_recipes_recommend_success(
         ]
 
     monkeypatch.setattr(
-        "backend.routers.recipes.generate_recipes",
+        "backend.routers.recipes.generate_rag_recipes",
         fake_generate_recipes,
     )
 
@@ -103,7 +103,7 @@ def test_recipes_recommend_generation_failure_returns_common_error(
         raise RuntimeError("Gemini 호출 실패")
 
     monkeypatch.setattr(
-        "backend.routers.recipes.generate_recipes",
+        "backend.routers.recipes.generate_rag_recipes",
         raise_error,
     )
 

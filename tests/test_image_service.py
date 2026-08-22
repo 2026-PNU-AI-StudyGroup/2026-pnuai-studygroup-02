@@ -56,11 +56,17 @@ def test_predict_single_invalid_format_returns_error_without_loading_model(
 def test_predict_single_uses_loaded_model_for_top3(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # [TEST] TensorFlow 모델을 실제로 로딩하지 않도록 load_model을 가짜 모델로 대체한다.
+    # [TEST] TFLite 인터프리터를 실제로 로딩하지 않도록 load_model을 가짜 인터프리터로 대체한다.
     monkeypatch.setattr(image_service, "MOCK_MODE", False)
 
-    class FakeModel:
-        def predict(self, image_array: np.ndarray, verbose: int = 0) -> np.ndarray:
+    class FakeInterpreter:
+        def set_tensor(self, index: int, image_array: np.ndarray) -> None:
+            pass
+
+        def invoke(self) -> None:
+            pass
+
+        def get_tensor(self, index: int) -> np.ndarray:
             return np.array([[0.1, 0.7, 0.2]], dtype=np.float32)
 
     fake_class_names = ["cabbage", "potato", "carrot"]
@@ -68,7 +74,7 @@ def test_predict_single_uses_loaded_model_for_top3(
     monkeypatch.setattr(
         image_service,
         "load_model",
-        lambda: (FakeModel(), fake_class_names),
+        lambda: (FakeInterpreter(), 0, 0, fake_class_names),
     )
 
     file_bytes = _make_image_bytes()
@@ -85,7 +91,7 @@ def test_predict_single_wraps_model_errors(
 ) -> None:
     monkeypatch.setattr(image_service, "MOCK_MODE", False)
 
-    def raise_error() -> tuple[object, list[str]]:
+    def raise_error() -> tuple[object, int, int, list[str]]:
         raise FileNotFoundError("모델 파일이 없습니다")
 
     monkeypatch.setattr(image_service, "load_model", raise_error)

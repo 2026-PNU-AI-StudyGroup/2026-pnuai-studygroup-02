@@ -5,7 +5,7 @@ pydantic-settings
 python-dotenv
 python-multipart
 google-genai
-tensorflow
+ai-edge-litert
 pillow
 numpy
 httpx

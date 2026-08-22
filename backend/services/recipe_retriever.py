@@ -7,9 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-import faiss
 import numpy as np
-from sentence_transformers import SentenceTransformer
 
 
 # [RAG-RETRIEVE] 프로젝트 루트 경로
@@ -79,6 +77,11 @@ def _load_retrieval_resources():
     이후 search() 호출에서는 캐시된 객체를 재사용한다.
     """
 
+    # [RAG-RETRIEVE] faiss, sentence-transformers(torch 포함)는 임포트 자체가
+    # 무거워 RAG 기능이 실제로 필요할 때만 불러온다. (배포 환경 메모리 절약)
+    import faiss
+    from sentence_transformers import SentenceTransformer
+
     if not INDEX_PATH.exists():
         raise FileNotFoundError(
             "FAISS 인덱스가 없습니다. "
@@ -91,8 +94,10 @@ def _load_retrieval_resources():
         )
 
     # [RAG-RETRIEVE] FAISS 인덱스 로딩
-    index = faiss.read_index(
-        str(INDEX_PATH)
+    # faiss.read_index(경로)는 내부적으로 C++ fopen을 사용해 비-ASCII 경로(한글 등)에서
+    # "Illegal byte sequence" 오류가 날 수 있어, 바이트를 직접 읽어 역직렬화한다.
+    index = faiss.deserialize_index(
+        np.frombuffer(INDEX_PATH.read_bytes(), dtype=np.uint8)
     )
 
     # [RAG-RETRIEVE] FAISS 벡터와 연결된 청크 정보 로딩

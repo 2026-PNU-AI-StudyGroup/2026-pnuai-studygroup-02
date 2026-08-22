@@ -62,7 +62,7 @@ def test_owned_first_recommendation(monkeypatch):
 
     # [HANDOVER] 실제 LLM 호출 대신 준비된 테스트 데이터를 반환한다.
     monkeypatch.setattr(
-        "backend.routers.recipes.generate_recipes",
+        "backend.routers.recipes.generate_rag_recipes",
         lambda ingredients, deficient_nutrients, mode: mock_recipes,
     )
 
@@ -125,7 +125,7 @@ def test_nutrition_supplement_recommendation(monkeypatch):
 
     # [HANDOVER] 실제 LLM 호출 대신 영양 보충 테스트 데이터를 반환한다.
     monkeypatch.setattr(
-        "backend.routers.recipes.generate_recipes",
+        "backend.routers.recipes.generate_rag_recipes",
         lambda ingredients, deficient_nutrients, mode: mock_recipes,
     )
 

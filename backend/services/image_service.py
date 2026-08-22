@@ -31,7 +31,7 @@ ARTIFACT_DIR = (
     / "model"
     / "artifacts"
 )
-MODEL_PATH = ARTIFACT_DIR / "ingredient_model_v2.keras"
+MODEL_PATH = ARTIFACT_DIR / "ingredient_model_v2.tflite"
 CLASS_NAMES_PATH = ARTIFACT_DIR / "class_names_v2.json"
 
 # [IMAGE] MOCK_MODE=true면 모델을 로드하지 않고 고정 결과를 반환한다. (backend/config.py의 공용 설정을 사용)
@@ -44,20 +44,23 @@ MOCK_CANDIDATES: list[dict[str, Any]] = [
     {"name": "cucumber", "confidence": 0.02},
 ]
 
-# [IMAGE] 모델과 클래스명을 1회만 로딩해 모듈 전역에 캐싱한다.
-_model: Any = None
+# [IMAGE] 인터프리터와 클래스명을 1회만 로딩해 모듈 전역에 캐싱한다.
+_interpreter: Any = None
+_input_index: int | None = None
+_output_index: int | None = None
 _class_names: list[str] | None = None
 
 
-# [IMAGE] 저장된 .keras 모델과 class_names_v2.json을 1회만 로딩해 캐싱한다.
-def load_model() -> tuple[Any, list[str]]:
-    global _model, _class_names
+# [IMAGE] 저장된 .tflite 모델과 class_names_v2.json을 1회만 로딩해 캐싱한다.
+# TensorFlow 풀 패키지 대신 인터프리터만 담은 ai-edge-litert를 사용해
+# 배포 환경(Render Free 등)에서 메모리 사용량을 크게 줄인다.
+def load_model() -> tuple[Any, int, int, list[str]]:
+    global _interpreter, _input_index, _output_index, _class_names
 
-    if _model is not None and _class_names is not None:
-        return _model, _class_names
+    if _interpreter is not None and _class_names is not None:
+        return _interpreter, _input_index, _output_index, _class_names
 
-    # [IMAGE] TensorFlow는 임포트 자체가 무거워 실제로 필요할 때만 불러온다.
-    import tensorflow as tf
+    from ai_edge_litert.interpreter import Interpreter
 
     if not MODEL_PATH.exists():
         raise FileNotFoundError(f"모델 파일이 없습니다: {MODEL_PATH}")
@@ -67,14 +70,21 @@ def load_model() -> tuple[Any, list[str]]:
             f"클래스명 파일이 없습니다: {CLASS_NAMES_PATH}"
         )
 
-    _model = tf.keras.models.load_model(MODEL_PATH)
+    # [IMAGE] Windows(OneDrive 등 비-ASCII 경로) 환경에서 model_path 인자가
+    # 파일을 못 여는 경우가 있어, 바이트를 직접 읽어 model_content로 전달한다.
+    interpreter = Interpreter(model_content=MODEL_PATH.read_bytes())
+    interpreter.allocate_tensors()
+
+    _interpreter = interpreter
+    _input_index = interpreter.get_input_details()[0]["index"]
+    _output_index = interpreter.get_output_details()[0]["index"]
 
     with CLASS_NAMES_PATH.open(mode="r", encoding="utf-8") as file:
         _class_names = json.load(file)
 
     logger.info("이미지 분류 모델을 로딩했습니다: %s", MODEL_PATH)
 
-    return _model, _class_names
+    return _interpreter, _input_index, _output_index, _class_names
 
 
 # [IMAGE] 이미지 바이트를 실제로 열어 포맷을 감지한다. 손상된 파일이면 None을 반환한다.
@@ -136,9 +146,12 @@ def predict_single(file_bytes: bytes, image_id: str) -> dict[str, Any]:
         }
 
     try:
-        model, class_names = load_model()
+        interpreter, input_index, output_index, class_names = load_model()
         image_array = preprocess_image(file_bytes)
-        predictions = model.predict(image_array, verbose=0)[0]
+
+        interpreter.set_tensor(input_index, image_array)
+        interpreter.invoke()
+        predictions = interpreter.get_tensor(output_index)[0]
 
         top_indices = np.argsort(predictions)[::-1][:TOP_K]
         candidates = [
