@@ -7,9 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-import faiss
 import numpy as np
-from sentence_transformers import SentenceTransformer
 
 
 # [RAG-RETRIEVE] 프로젝트 루트 경로
@@ -78,6 +76,11 @@ def _load_retrieval_resources():
 
     이후 search() 호출에서는 캐시된 객체를 재사용한다.
     """
+
+    # [RAG-RETRIEVE] faiss, sentence-transformers(torch 포함)는 임포트 자체가
+    # 무거워 RAG 기능이 실제로 필요할 때만 불러온다. (배포 환경 메모리 절약)
+    import faiss
+    from sentence_transformers import SentenceTransformer
 
     if not INDEX_PATH.exists():
         raise FileNotFoundError(
