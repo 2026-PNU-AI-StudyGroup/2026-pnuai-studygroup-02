@@ -30,12 +30,33 @@ function buildRecipeCard(recipe, index) {
 
     const icon = RECIPE_CARD_ICONS[index % RECIPE_CARD_ICONS.length];
 
+    // [RECIPES] 레시피별 출처(sources) 표시. RAG로 실제 레시피를 참고했으면 그 출처를,
+    // 비어 있으면(fallback) 해당 레시피에 한해 직접 생성 안내를 보여준다.
+    // 백엔드 sources는 "레시피명 - 출처기관명 - URL" 형식이라, 카드에는 URL과
+    // (이미 카드 제목에 나온) 레시피명은 빼고 출처기관명만 깔끔하게 보여준다.
+    const cleanedSources = recipe.sources
+        ? [...new Set(
+            recipe.sources.map(source =>
+                source
+                    .split(' - ')
+                    .map(part => part.trim())
+                    .filter(part => part && !part.startsWith('http') && part !== recipe.title)
+                    .join(', ') || source
+            )
+        )]
+        : [];
+
+    const sourceHTML = cleanedSources.length > 0
+        ? `<p class="recipe-source">📖 출처: ${cleanedSources.join(', ')}</p>`
+        : '<p class="recipe-source recipe-source-none">🤖 이 레시피는 LLM이 직접 생성했습니다.</p>';
+
     // 카드 바디 구성: 왼쪽(레시피명/재료), 오른쪽(조리순서)을 가로로 나란히 배치한다.
     // 백엔드 Recipe 스키마에는 title만 있고 reason/조리시간/난이도 필드는 없어 표시하지 않는다.
     card.innerHTML = `
         <div class="recipe-card-main">
             <div class="recipe-card-thumb">${icon}</div>
             <h3 class="recipe-title">${recipe.title || '이름 없는 레시피'}</h3>
+            ${sourceHTML}
 
             <div class="recipe-ingredients-wrap">
                 <div class="ing-block">
@@ -176,29 +197,10 @@ document.addEventListener('DOMContentLoaded', () => {
             appState.recipes = recipes;
             appState.stage = 'recommended';
 
-            // 1. 레시피 목록을 "냉장고 재료로만 가능" / "추천 재료 필요" 두 그룹으로 나눠 렌더링
+            // 레시피 목록을 "냉장고 재료로만 가능" / "추천 재료 필요" 두 그룹으로 나눠 렌더링한다.
+            // 출처 표시는 레시피마다 다를 수 있어(RAG 성공/fallback 혼재 가능) buildRecipeCard에서
+            // 카드별로 처리한다.
             renderRecipeCards(recipes, recipeCardsContainer);
-
-            // 2. 출처 없음 안내 배너 렌더링
-            // 백엔드는 RAG를 사용하지 않아 모든 레시피의 sources가 항상 빈 배열이므로(recipe_mode와 무관),
-            // 매번 LLM이 직접 생성한 레시피라는 안내를 띄운다.
-            const noticeBanner = document.createElement('div');
-            noticeBanner.className = 'recipe-llm-notice';
-
-            // 직관적인 인라인 스타일 적용 (디자인 요구사항 반영)
-            Object.assign(noticeBanner.style, {
-                marginTop: '20px',
-                padding: '12px',
-                backgroundColor: '#fff3cd',
-                border: '1px solid #ffeeba',
-                color: '#856404',
-                textAlign: 'center',
-                borderRadius: '4px',
-                fontWeight: '500'
-            });
-            noticeBanner.innerText = '출처 없음: LLM이 직접 생성한 레시피입니다';
-
-            recipeCardsContainer.appendChild(noticeBanner);
 
         } catch (error) {
             console.error('[RECIPES] 레시피 처리 실패:', error);

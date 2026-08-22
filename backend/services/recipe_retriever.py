@@ -94,8 +94,10 @@ def _load_retrieval_resources():
         )
 
     # [RAG-RETRIEVE] FAISS 인덱스 로딩
-    index = faiss.read_index(
-        str(INDEX_PATH)
+    # faiss.read_index(경로)는 내부적으로 C++ fopen을 사용해 비-ASCII 경로(한글 등)에서
+    # "Illegal byte sequence" 오류가 날 수 있어, 바이트를 직접 읽어 역직렬화한다.
+    index = faiss.deserialize_index(
+        np.frombuffer(INDEX_PATH.read_bytes(), dtype=np.uint8)
     )
 
     # [RAG-RETRIEVE] FAISS 벡터와 연결된 청크 정보 로딩

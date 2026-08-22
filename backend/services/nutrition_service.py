@@ -61,8 +61,13 @@ def _read_csv_rows(path: str) -> List[Dict[str, str]]:
         raise FileNotFoundError(f"데이터 파일을 찾을 수 없습니다: {path}")
 
     with open(path, encoding="utf-8") as f:
-        # 주석 줄(#으로 시작)은 건너뛰고 실제 데이터 줄만 남긴다.
-        lines = [line for line in f if not line.lstrip().startswith("#")]
+        # 주석 줄(#으로 시작)과 빈 줄은 건너뛰고 실제 데이터 줄만 남긴다.
+        # (빈 줄을 남겨두면 DictReader가 그 줄을 헤더로 오인해 모든 데이터가 유실된다.)
+        lines = [
+            line
+            for line in f
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
 
     reader = csv.DictReader(lines)
     return list(reader)

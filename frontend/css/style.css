@@ -738,6 +738,16 @@ button {
     font-weight: 700;
 }
 
+.recipe-source {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+
+.recipe-source-none {
+    font-style: italic;
+}
+
 .recipe-ingredients-wrap {
     display: flex;
     flex-direction: column;
