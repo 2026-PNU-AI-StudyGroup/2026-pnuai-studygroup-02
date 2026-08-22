@@ -231,6 +231,31 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // [STATE] id='rice-toggle-checkbox' 체크 시 쌀을 수동 재료로 추가/제거한다.
+    // 이미지 인식 모델이 쌀을 학습하지 않아 사진으로는 인식이 안 되므로 별도 체크박스로 지원한다.
+    const riceCheckbox = document.getElementById('rice-toggle-checkbox');
+
+    if (riceCheckbox) {
+        riceCheckbox.addEventListener('change', () => {
+            if (riceCheckbox.checked) {
+                const alreadyAdded = appState.recognized.some(item => item.name === '쌀');
+                if (!alreadyAdded) {
+                    addManualIngredient('쌀');
+                }
+            } else {
+                appState.recognized = appState.recognized.filter(item => item.name !== '쌀');
+                appState.nutrition = null;
+                appState.recipes = null;
+                canAnalyze();
+            }
+
+            const resultCardsContainer = document.getElementById('result-cards');
+            if (typeof renderResultCards === 'function' && resultCardsContainer) {
+                renderResultCards(appState.recognized, resultCardsContainer);
+            }
+        });
+    }
+
     // 초기 버튼 활성화 여부 계산
     canAnalyze();
 });

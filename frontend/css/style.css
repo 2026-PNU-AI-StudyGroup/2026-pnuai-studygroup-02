@@ -595,6 +595,27 @@ button {
     accent-color: var(--primary-color);
 }
 
+.rice-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+    font-size: 0.88rem;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 8px 14px;
+    cursor: pointer;
+    min-height: 44px;
+    width: fit-content;
+}
+
+.rice-toggle-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary-color);
+}
+
 /* 11. 부족 영양소 카드 */
 #deficient-cards {
     text-align: left;

@@ -36,6 +36,13 @@ function renderResultCards(recognizedItems, container) {
                 appState.recipes = null;
                 if (typeof canAnalyze === 'function') canAnalyze();
             }
+
+            // [UPLOAD] 쌀 카드를 카드 삭제 버튼으로 지운 경우, 쌀 체크박스도 함께 해제해 상태를 맞춘다.
+            if (item.name === '쌀') {
+                const riceCheckbox = document.getElementById('rice-toggle-checkbox');
+                if (riceCheckbox) riceCheckbox.checked = false;
+            }
+
             renderResultCards(appState.recognized, container);
         });
 
