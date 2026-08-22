@@ -63,10 +63,11 @@ function renderResultCards(recognizedItems, container) {
         nameText.textContent = item.name;
         nameText.className = 'result-card-name';
 
-        // 신뢰도 표시
+        // 신뢰도 표시: 수동으로 추가한 재료(쌀 체크박스, 직접 추가 입력 등)는 image_id가 없고
+        // confidence가 항상 1.0으로 고정돼 있어 실제 인식 신뢰도가 아니므로 표시하지 않는다.
         const confidenceText = document.createElement('span');
         confidenceText.className = 'result-card-confidence';
-        confidenceText.textContent = typeof item.confidence === 'number'
+        confidenceText.textContent = (item.image_id && typeof item.confidence === 'number')
             ? `신뢰도 ${Math.round(item.confidence * 100)}%`
             : '';
 
