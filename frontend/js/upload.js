@@ -164,11 +164,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const recognizeBtn = document.getElementById('recognize-btn');
     const resultCardsContainer = document.getElementById('result-cards');
 
-    // [UPLOAD] 근영 담당. 모바일 환경을 고려해 capture="environment" 속성 동적 지원
-    // 데스크톱에서는 파일 선택창, 모바일에서는 바로 후면 카메라가 실행됩니다.
+    // [UPLOAD] 근영 담당. capture 속성을 넣지 않아야 모바일에서 "촬영"과 "갤러리에서 선택"을
+    // 둘 다 고를 수 있는 기본 선택창이 뜬다. capture="environment"를 넣으면 카메라가 바로
+    // 실행되며 갤러리 선택 옵션이 사라지는 기기가 많아(특히 안드로이드) 의도적으로 제거한다.
     if (fileInput) {
         fileInput.setAttribute('accept', 'image/*');
-        fileInput.setAttribute('capture', 'environment'); 
     }
 
     const allowedExtensions = ['jpg', 'jpeg', 'png'];
