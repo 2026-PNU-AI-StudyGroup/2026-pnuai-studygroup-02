@@ -16,6 +16,7 @@ from pydantic import ValidationError
 
 from backend.config import settings
 from backend.schemas.recipe import RecipeMode, RecipeResponse
+from backend.services.recipe_retriever import _expand_synonyms
 
 
 # [LLM-RECIPE] 프로젝트 최상위의 .env 환경변수를 읽는다.
@@ -123,6 +124,28 @@ def _is_staple_ingredient(
     )
 
 
+# [LLM-RECIPE] ingredient가 사용자 입력 재료 중 하나와 같은 재료인지 검사한다.
+# 단순 문자열 비교("쌀" != "쌀밥")로는 놓치는 표기 차이를
+# ingredient_aliases.json 기반 동의어 그룹으로 보정한다.
+def _is_owned_ingredient(
+    ingredient: str,
+    input_ingredients: list[str],
+) -> bool:
+    ingredient_synonyms = _expand_synonyms(
+        ingredient
+    )
+
+    for input_item in input_ingredients:
+        input_synonyms = _expand_synonyms(
+            input_item
+        )
+
+        if ingredient_synonyms & input_synonyms:
+            return True
+
+    return False
+
+
 # [LLM-RECIPE] 예외 또는 원인 예외가 타임아웃인지 검사한다.
 def _is_timeout_exception(
     exc: BaseException,
@@ -177,7 +200,10 @@ def _build_prompt(
 - 이 중 최소 2개는 additional_ingredients가 완전히 빈 배열이어야 합니다.
   즉, 기본 양념(물·소금·후추·식용유)을 제외하고는 보유 재료만으로 바로 완성할 수 있는
   레시피여야 하며, 장보기 목록이 전혀 필요 없어야 합니다.
-- 나머지 레시피도 추가 재료는 가능한 한 적게, 꼭 필요한 경우에만 사용하세요.
+- 나머지 최소 1개는 보유하지 않은 재료(향신료, 소스, 토핑 등)를
+  additional_ingredients에 포함해, 조금만 더 사면 완성할 수 있는 레시피로 만드세요.
+  단, 밥·쌀·면·국수·라면·우동·파스타·빵·식빵처럼 사용자가 이미 보유한 재료를
+  additional_ingredients에 다시 넣지 마세요.
 """.strip()
 
     else:
@@ -219,8 +245,10 @@ def _build_prompt(
 2. owned_ingredients에는 사용자가 입력한 재료만 넣으세요.
 3. 보유하지 않은 재료는 owned_ingredients에 넣지 마세요.
 4. 보유하지 않은 재료가 필요하면 additional_ingredients에 넣으세요.
-5. 밥·쌀·면·국수·라면·우동·파스타·빵·식빵은
+5. 밥·쌀·면·국수·라면·우동·파스타·빵·식빵은 사용자가 보유하지 않았다면
    반드시 additional_ingredients로 분류하세요.
+   사용자가 이미 보유하고 있다면 owned_ingredients와 additional_ingredients
+   어느 쪽에도 넣지 말고, steps에서만 사용하세요.
 6. 물·소금·후추·식용유는 재료 목록에 넣지 마세요.
 7. 보유하지 않은 재료를 steps에서 갑자기 사용하지 마세요.
 8. steps의 각 단계에는 재료 분량(예: 1큰술, 200g, 1개)을 구체적인 숫자로 명시하세요.
@@ -397,11 +425,21 @@ def _validate_business_rules(
                 )
             )
 
-        # [LLM-RECIPE] 기본 양념은 추가 재료 목록에서도 제거한다.
+        # [LLM-RECIPE] 기본 양념과, 사용자가 이미 보유한 재료(표기가 달라도
+        # 동의어로 같은 재료면 포함)는 추가 재료 목록에서 제거한다.
+        # STAPLE_KEYWORDS(쌀 등)는 owned_ingredients에는 못 들어가지만,
+        # 사용자가 실제로 입력한 재료라면 "추가로 사야 할 재료"도 아니므로
+        # 여기서 걸러내지 않으면 이미 가진 재료가 장보기 목록에 다시 나타난다.
         cleaned_additional: list[str] = []
 
         for ingredient in recipe.additional_ingredients:
             if ingredient in BASIC_SEASONINGS:
+                continue
+
+            if _is_owned_ingredient(
+                ingredient,
+                input_ingredients,
+            ):
                 continue
 
             if ingredient not in cleaned_additional:
@@ -444,6 +482,18 @@ def _validate_business_rules(
     if not has_fridge_only_recipe:
         raise ValueError(
             "추가 재료 없이 보유 재료만으로 완성 가능한 레시피가 최소 1개 이상 있어야 합니다."
+        )
+
+    # [LLM-RECIPE] owned_first 모드도 최소 1개는 additional_ingredients가 있어야 한다
+    # (프론트의 "재료 몇 가지만 추가하면 만들 수 있는 레시피" 그룹이 비지 않도록).
+    # 보유 재료가 많을수록 Gemini가 제안한 additional_ingredients가 전부
+    # 이미 가진 재료와 겹쳐 걸러지면서, 이 그룹이 통째로 비는 문제가 있었다.
+    if (
+        mode == "owned_first"
+        and not has_additional_ingredient
+    ):
+        raise ValueError(
+            "owned_first 모드는 추가 재료가 포함된 레시피가 최소 1개 이상 있어야 합니다."
         )
 
     # [LLM-RECIPE] 영양 보충 모드의 추가 규칙을 검사한다.

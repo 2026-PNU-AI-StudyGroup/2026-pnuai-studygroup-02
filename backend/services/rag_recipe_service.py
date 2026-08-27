@@ -14,6 +14,8 @@ from backend.schemas.recipe import (
 )
 
 from backend.services.recipe_retriever import (
+    _is_protein_ingredient,
+    _match_ratio,
     search,
 )
 
@@ -340,6 +342,7 @@ def _restore_and_validate_sources(
     response: RecipeResponse,
     raw_sources: list[list[str]],
     allowed_sources: list[str],
+    documents: list[dict[str, Any]],
 ) -> None:
     """
     [RAG-RECIPE] LLM이 반환한 sources가
@@ -348,11 +351,35 @@ def _restore_and_validate_sources(
     기존 업무 규칙 검증 함수가 sources를
     빈 배열로 변경하므로 검증 전에 저장했던
     sources를 다시 복원한다.
+
+    이름이 [사용 가능한 sources] 목록에 있는지만 확인하면,
+    인용한 문서와 전혀 무관한 요리를 생성해도(예: "오징어구이"를
+    인용하고 "삼겹토마토볶음"을 생성) 걸러내지 못한다.
+    그래서 인용한 문서의 재료와 생성된 레시피의 재료가
+    최소 1개는 겹치는지도 함께 검사한다.
     """
 
     allowed_set = set(
         allowed_sources
     )
+
+    # [RAG-RECIPE] source_label -> 원본 검색 문서 매핑
+    # (내용 대조를 위해 재료 목록이 필요하다)
+    document_by_source: dict[
+        str,
+        dict[str, Any],
+    ] = {}
+
+    for document in documents:
+        label = _make_source_label(
+            document
+        )
+
+        if (
+            label
+            and label not in document_by_source
+        ):
+            document_by_source[label] = document
 
     for recipe, recipe_sources in zip(
         response.recipes,
@@ -391,6 +418,62 @@ def _restore_and_validate_sources(
         recipe.sources = (
             valid_sources
         )
+
+        # [RAG-RECIPE] 인용한 출처 문서와 실제 생성된 레시피가
+        # 재료를 하나도 공유하지 않으면, 출처와 무관한 내용을
+        # 지어낸 것으로 보고 반려한다(재시도 유도).
+        cited_documents = [
+            document_by_source[source]
+            for source in valid_sources
+            if source in document_by_source
+        ]
+
+        recipe_ingredients = list(
+            recipe.owned_ingredients
+        ) + list(
+            recipe.additional_ingredients
+        )
+
+        # [RAG-RECIPE] 주재료(닭고기, 삼겹살 등)가 있으면 그 주재료가
+        # 인용한 문서에 반드시 있어야 한다. "마늘"·"대파" 같은 부재료 하나만
+        # 우연히 겹쳐도 통과하던 느슨한 검증을, 요리의 정체성을 결정하는
+        # 주재료 기준으로 강화한 것이다.
+        protein_ingredients = [
+            ingredient
+            for ingredient in recipe_ingredients
+            if _is_protein_ingredient(
+                ingredient
+            )
+        ]
+
+        check_ingredients = (
+            protein_ingredients
+            if protein_ingredients
+            else recipe_ingredients
+        )
+
+        has_overlap = any(
+            _match_ratio(
+                check_ingredients,
+                document.get(
+                    "ingredients",
+                    [],
+                ),
+            )
+            > 0
+            for document in cited_documents
+        )
+
+        if (
+            cited_documents
+            and not has_overlap
+        ):
+            raise ValueError(
+                f"'{recipe.title}' 레시피가 인용한 출처"
+                f"({', '.join(valid_sources)})와 "
+                "재료가 전혀 겹치지 않습니다. "
+                "출처와 무관한 레시피를 생성한 것으로 보입니다."
+            )
 
 
 def _make_search_cache_key(
@@ -815,6 +898,7 @@ def generate_rag_recipes(
                 response=response,
                 raw_sources=raw_sources,
                 allowed_sources=allowed_sources,
+                documents=documents,
             )
 
             total_elapsed_ms = (
