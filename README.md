@@ -259,7 +259,7 @@ uvicorn backend.main:app --reload --port 8000
 
 ### 5. 소개 및 시연 영상 (PC버전과 모바일버전)
 
-> 클라우드 배포 환경(Render Free)에서는 이미지 분류 시 메모리 한도 초과 문제가 있어(3.5 참고), 전체 기능(식재료 인식 → 영양 분석 → RAG 레시피 추천)이 정상 동작하는 로컬 실행 화면을 시연 영상으로 촬영해 대체하였다.
+> 이미지 클릭 시 시연영상으로 이동 - 클라우드 배포 환경(Render Free)에서는 이미지 분류 시 메모리 한도 초과 문제가 있어(3.5 참고), 전체 기능(식재료 인식 → 영양 분석 → RAG 레시피 추천)이 정상 동작하는 로컬 실행 화면을 시연 영상으로 촬영해 대체하였다.
 >
 > [![시연 영상](service_img/f4.png)](https://drive.google.com/file/d/1z_Db6LkcYz9LM81DJ_szWxenJYeos7Cn/view?usp=drive_link)
 
